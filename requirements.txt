@@ -1,0 +1,5 @@
+vanna[openai,mysql,chromadb]
+python-dotenv
+tabulate
+pandas
+chromadb

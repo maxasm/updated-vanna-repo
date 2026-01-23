@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,TABLE_ROWS
+classicmodels,customers,0
+classicmodels,employees,23
+classicmodels,offices,7
+classicmodels,orderdetails,0
+classicmodels,orders,0
+classicmodels,payments,0
+classicmodels,productlines,5
+classicmodels,products,110
