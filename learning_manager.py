@@ -94,7 +94,7 @@ class LearningManager:
         except Exception as e:
             logger.error(f"Error loading patterns: {e}")
     
-    def _save_pattern(self, pattern_type: str, pattern_data: Dict[str, Any]):
+    async def _save_pattern(self, pattern_type: str, pattern_data: Dict[str, Any]):
         """Save a pattern to memory"""
         try:
             memory_content = json.dumps({
@@ -103,7 +103,7 @@ class LearningManager:
                 "timestamp": datetime.now().isoformat()
             })
             context = self._create_tool_context()
-            self.memory.save_text_memory(content=memory_content, context=context)
+            await self.memory.save_text_memory(content=memory_content, context=context)
         except Exception as e:
             logger.error(f"Error saving pattern: {e}")
     
@@ -144,14 +144,14 @@ class LearningManager:
         
         return pattern
     
-    def record_tool_usage(self, question: str, tool_name: str, args: Dict[str, Any], 
+    async def record_tool_usage(self, question: str, tool_name: str, args: Dict[str, Any], 
                          success: bool, metadata: Optional[Dict[str, Any]] = None):
         """Record tool usage and extract patterns from successful usage"""
         try:
             context = self._create_tool_context()
             
             # Save to Vanna's built-in tool usage memory
-            self.memory.save_tool_usage(
+            await self.memory.save_tool_usage(
                 question=question,
                 tool_name=tool_name,
                 args=args,
@@ -187,7 +187,7 @@ class LearningManager:
                     self.tool_patterns[pattern_id] = pattern
                 
                 # Save pattern to memory
-                self._save_pattern('tool_usage_pattern', pattern.to_dict())
+                await self._save_pattern('tool_usage_pattern', pattern.to_dict())
                 
                 # If this is an SQL tool, also extract query pattern
                 if tool_name == 'run_sql' and 'sql' in args:
@@ -215,7 +215,7 @@ class LearningManager:
                         self.query_patterns[query_pattern_id] = qp
                     
                     # Save query pattern to memory
-                    self._save_pattern('query_pattern', qp.to_dict())
+                    await self._save_pattern('query_pattern', qp.to_dict())
                     
                     logger.info(f"Saved query pattern: {query_pattern_id}")
                 
@@ -267,7 +267,7 @@ class LearningManager:
             logger.error(f"Error finding similar queries: {e}")
             return []
     
-    def find_similar_tool_usage(self, question: str, tool_name: Optional[str] = None, 
+    async def find_similar_tool_usage(self, question: str, tool_name: Optional[str] = None,
                                limit: int = 3) -> List[ToolUsagePattern]:
         """Find similar successful tool usage for the given question"""
         try:
@@ -275,7 +275,7 @@ class LearningManager:
             
             # Use Vanna's built-in search for similar usage
             context = self._create_tool_context()
-            similar_results = self.memory.search_similar_usage(
+            similar_results = await self.memory.search_similar_usage(
                 question=question,
                 context=context,
                 limit=limit * 2,  # Get more to filter

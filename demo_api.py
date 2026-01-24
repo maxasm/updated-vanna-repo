@@ -11,6 +11,12 @@ import subprocess
 import sys
 import os
 
+
+def _api_base_url() -> str:
+    host = os.getenv("HOST", "localhost")
+    port = os.getenv("PORT", "8001")
+    return f"http://{host}:{port}"
+
 def demonstrate_api():
     """Demonstrate the REST API functionality"""
     
@@ -32,7 +38,7 @@ def demonstrate_api():
     # Wait for server to start
     time.sleep(5)
     
-    base_url = "http://localhost:8000"
+    base_url = _api_base_url()
     
     try:
         # Demonstrate health endpoint
@@ -158,7 +164,7 @@ def demonstrate_api():
         print("USAGE EXAMPLE")
         print("=" * 70)
         print("\n# Query the API (Polling):")
-        print('''curl -X POST http://localhost:8000/api/vanna/v2/chat_poll \\
+        print(f'''curl -X POST {base_url}/api/vanna/v2/chat_poll \\
   -H "Content-Type: application/json" \\
   -d '{
     "message": "How many customers are there?",
@@ -173,7 +179,7 @@ def demonstrate_api():
   }' ''')
         
         print("\n# Query the API (SSE):")
-        print('''curl -X POST http://localhost:8000/api/vanna/v2/chat_sse \\
+        print(f'''curl -X POST {base_url}/api/vanna/v2/chat_sse \\
   -H "Content-Type: application/json" \\
   -d '{
     "message": "How many customers are there?",
@@ -188,10 +194,10 @@ def demonstrate_api():
   }' ''')
         
         print("\n# Health check:")
-        print("curl http://localhost:8000/health")
+        print(f"curl {base_url}/health")
         
         print("\n# Check learning progress:")
-        print("curl http://localhost:8000/api/v1/learning/stats")
+        print(f"curl {base_url}/api/v1/learning/stats")
         
         print("\n# Open web interface:")
         print(f"open {base_url}  # or visit in browser")

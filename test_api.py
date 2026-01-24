@@ -28,7 +28,9 @@ async def test_api():
     
     try:
         async with aiohttp.ClientSession() as session:
-            base_url = "http://localhost:8000"
+            host = os.getenv("HOST", "localhost")
+            port = os.getenv("PORT", "8001")
+            base_url = f"http://{host}:{port}"
             
             # Test health endpoint
             print("\n🧪 Testing health endpoint...")

@@ -36,12 +36,11 @@ from learning_manager import LearningManager
 # Import VannaFastAPIServer for base functionality
 from vanna.servers.fastapi import VannaFastAPIServer
 
+from logging_config import configure_logging
+
 # --- LOGGING ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [VANNA AI API] %(levelname)s: %(message)s'
-)
-logger = logging.getLogger(__name__)
+configure_logging(component="VANNA API")
+logger = logging.getLogger("vanna_api")
 
 # --- 1. LOAD ENVIRONMENT VARIABLES ---
 load_dotenv()
@@ -132,32 +131,229 @@ class CSVResultManager:
             filename = Path(csv_path).name
             return f"/static/{filename}"
 
-# --- 8. ENHANCED CHAT HANDLER ---
+# --- 8. CONVERSATION STORE AND FILTERS ---
+class ConversationStore:
+    """Stores and manages conversation history"""
+    
+    def __init__(self, agent_memory: ChromaAgentMemory, max_history: int = 10):
+        self.memory = agent_memory
+        self.max_history = max_history
+        # Conversation ID will be generated per request based on user
+    
+    def _create_tool_context(self, user_id: str = "api_user", username: str = "api_user", 
+                           conversation_id: str = None) -> ToolContext:
+        """Create a ToolContext for memory operations"""
+        if conversation_id is None:
+            conversation_id = f"conversation_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        return ToolContext(
+            user=User(id=user_id, username=username, group_memberships=["api_users"]),
+            conversation_id=conversation_id,
+            request_id=f"req_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
+            agent_memory=self.memory
+        )
+    
+    async def save_conversation_turn(self, question: str, response: str, 
+                                   user_id: str = "api_user", username: str = "api_user",
+                                   conversation_id: str = None, metadata: Optional[Dict] = None):
+        """Save a conversation turn (question + response) to memory"""
+        if metadata is None:
+            metadata = {}
+        
+        if conversation_id is None:
+            conversation_id = f"conversation_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Create conversation memory object with metadata embedded
+        conversation_memory = {
+            "conversation_id": conversation_id,
+            "user_id": user_id,
+            "username": username,
+            "timestamp": datetime.now().isoformat(),
+            "question": question,
+            "response": response,
+            "type": "conversation",
+            "metadata": metadata
+        }
+        
+        # Save to memory - embed metadata in the content since save_text_memory doesn't accept metadata parameter
+        memory_content = json.dumps(conversation_memory)
+        context = self._create_tool_context(user_id, username, conversation_id)
+        await self.memory.save_text_memory(
+            content=memory_content,
+            context=context
+        )
+    
+    async def get_recent_conversations(self, user_id: str = None, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get recent conversation history for a user (or all users if user_id is None)"""
+        context = self._create_tool_context()
+        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=limit * 2)  # Get more to filter
+        
+        conversations = []
+        for memory_item in recent_memories:
+            try:
+                # Parse the JSON content
+                conversation_data = json.loads(memory_item.content)
+                # Check if it's a conversation memory (has type field)
+                if conversation_data.get('type') == 'conversation':
+                    # Filter by user_id if specified
+                    if user_id is None or conversation_data.get('user_id') == user_id:
+                        conversations.append(conversation_data)
+            except (json.JSONDecodeError, AttributeError, KeyError):
+                continue
+        
+        # Return most recent conversations, up to limit
+        return conversations[:limit]
+    
+    async def get_filtered_conversations(self, user_id: str = None, 
+                                         filter_keywords: List[str] = None, 
+                                         filter_metadata: Dict[str, Any] = None,
+                                         limit: int = 5) -> List[Dict[str, Any]]:
+        """Get conversations filtered by user, keywords or metadata"""
+        context = self._create_tool_context()
+        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=limit * 10)  # Get more to filter
+        
+        filtered_conversations = []
+        for memory_item in recent_memories:
+            try:
+                conversation_data = json.loads(memory_item.content)
+                # Check if it's a conversation memory
+                if conversation_data.get('type') != 'conversation':
+                    continue
+                
+                # Filter by user_id if specified
+                if user_id is not None and conversation_data.get('user_id') != user_id:
+                    continue
+                    
+                # Apply keyword filter
+                if filter_keywords:
+                    text_to_search = f"{conversation_data.get('question', '')} {conversation_data.get('response', '')}".lower()
+                    if not any(keyword.lower() in text_to_search for keyword in filter_keywords):
+                        continue
+                
+                # Apply metadata filter (now metadata is inside conversation_data)
+                if filter_metadata:
+                    conv_metadata = conversation_data.get('metadata', {})
+                    if not all(conv_metadata.get(key) == value for key, value in filter_metadata.items()):
+                        continue
+                
+                filtered_conversations.append(conversation_data)
+            except (json.JSONDecodeError, AttributeError, KeyError):
+                continue
+        
+        return filtered_conversations[:limit]
+    
+    async def clear_conversation_history(self, user_id: str = None):
+        """Clear all conversation history (for testing/debugging)"""
+        context = self._create_tool_context()
+        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=1000)
+        for memory_item in recent_memories:
+            try:
+                conversation_data = json.loads(memory_item.content)
+                if conversation_data.get('type') == 'conversation':
+                    # Filter by user_id if specified
+                    if user_id is None or conversation_data.get('user_id') == user_id:
+                        if hasattr(memory_item, 'memory_id'):
+                            # Try to delete the memory by ID with context
+                            try:
+                                await self.memory.delete_by_id(
+                                    memory_id=memory_item.memory_id,
+                                    context=context
+                                )
+                            except TypeError:
+                                # If that fails, try without context
+                                await self.memory.delete_by_id(memory_id=memory_item.memory_id)
+            except (json.JSONDecodeError, AttributeError, KeyError):
+                continue
+
+class ConversationContextEnhancer:
+    """Enhances questions with conversation context"""
+    
+    def __init__(self, conversation_store: ConversationStore):
+        self.store = conversation_store
+    
+    async def enhance_question_with_context(self, question: str, user_id: str = None) -> str:
+        """Enhance the question with relevant conversation history for a user"""
+        # Get recent conversations for the user
+        recent_conversations = await self.store.get_recent_conversations(user_id=user_id, limit=3)
+        
+        if not recent_conversations:
+            return question
+        
+        # Build context from recent conversations
+        context_lines = ["Previous conversation context:"]
+        for i, conv in enumerate(recent_conversations, 1):
+            context_lines.append(f"{i}. Q: {conv.get('question', '')}")
+            context_lines.append(f"   A: {conv.get('response', '')[:100]}..." if len(conv.get('response', '')) > 100 else f"   A: {conv.get('response', '')}")
+        
+        # Add filtered conversations based on keywords
+        question_keywords = self._extract_keywords(question)
+        if question_keywords:
+            filtered_conversations = await self.store.get_filtered_conversations(
+                user_id=user_id,
+                filter_keywords=question_keywords,
+                limit=2
+            )
+            
+            if filtered_conversations:
+                context_lines.append("\nRelevant previous conversations:")
+                for i, conv in enumerate(filtered_conversations, 1):
+                    context_lines.append(f"{i}. Q: {conv.get('question', '')}")
+                    context_lines.append(f"   A: {conv.get('response', '')[:100]}..." if len(conv.get('response', '')) > 100 else f"   A: {conv.get('response', '')}")
+        
+        context = "\n".join(context_lines)
+        enhanced_question = f"{context}\n\nCurrent question: {question}"
+        
+        return enhanced_question
+    
+    def _extract_keywords(self, text: str) -> List[str]:
+        """Extract potential keywords from text (simplified)"""
+        # Remove common words and extract nouns/important terms
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might', 'must'}
+        
+        words = text.lower().split()
+        keywords = [word for word in words if word not in common_words and len(word) > 2]
+        
+        return keywords[:5]  # Return top 5 keywords
+
+# --- 9. ENHANCED CHAT HANDLER ---
 class EnhancedChatHandler:
-    """Enhanced chat handler that integrates learning and CSV generation"""
+    """Enhanced chat handler that integrates learning, conversation context, and CSV generation"""
     
     def __init__(self, agent: Agent, learning_manager: LearningManager, 
-                 csv_manager: CSVResultManager, sql_runner: MySQLRunner):
+                 csv_manager: CSVResultManager, sql_runner: MySQLRunner,
+                 conversation_store: ConversationStore, 
+                 conversation_enhancer: ConversationContextEnhancer):
         self.agent = agent
         self.learning_manager = learning_manager
         self.csv_manager = csv_manager
         self.sql_runner = sql_runner
+        self.conversation_store = conversation_store
+        self.conversation_enhancer = conversation_enhancer
         self.base_chat_handler = None  # Will be set after VannaFastAPIServer creation
     
     async def handle_chat_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle chat request with enhanced functionality"""
+        """Handle chat request with enhanced functionality including conversation context"""
         try:
-            # Extract message
+            # Extract message and user info
             message = request.get("message", "")
             if not message:
                 raise HTTPException(status_code=400, detail="Message is required")
             
-            # Enhance question with learned patterns
-            enhanced_question = self.learning_manager.enhance_question_with_learned_patterns(message)
+            headers = request.get("headers", {})
+            user_id = headers.get('x-user-id', 'api_user')
+            username = headers.get('x-username', 'api_user')
+            
+            # First enhance with learned patterns
+            learned_enhanced_question = self.learning_manager.enhance_question_with_learned_patterns(message)
+            
+            # Then enhance with conversation context
+            enhanced_question = await self.conversation_enhancer.enhance_question_with_context(
+                learned_enhanced_question, user_id=user_id
+            )
             
             # Create request context
             request_context = RequestContext(
-                headers=request.get("headers", {}),
+                headers=headers,
                 metadata=request.get("metadata", {})
             )
             
@@ -198,7 +394,7 @@ class EnhancedChatHandler:
                 csv_path = csv_after
                 tool_success = True
                 logger.info(f"New CSV generated: {csv_path}")
-                
+
                 # If we have SQL, execute it to get the dataframe for CSV generation
                 if sql_query:
                     try:
@@ -207,38 +403,12 @@ class EnhancedChatHandler:
                             # Generate hash for the query
                             import hashlib
                             query_hash = hashlib.md5(sql_query.encode()).hexdigest()
-                            
+
                             # Save results to CSV (in case it wasn't saved by the agent)
                             csv_path = self.csv_manager.save_query_results(df, query_hash)
-                            
-                            # Record successful tool usage
-                            self.learning_manager.record_tool_usage(
-                                question=message,
-                                tool_name="run_sql",
-                                args={"sql": sql_query, "result_file": csv_path},
-                                success=True,
-                                metadata={
-                                    "csv_file": csv_path,
-                                    "response_preview": response_text[:100],
-                                    "sql_extracted": True
-                                }
-                            )
-                    except Exception as e:
-                        logger.error(f"Error executing SQL: {e}")
-                        # Still record success since CSV was generated
-                        self.learning_manager.record_tool_usage(
-                            question=message,
-                            tool_name="run_sql",
-                            args={"sql": sql_query},
-                            success=True,  # CSV was generated, so it's a success
-                            metadata={"csv_file": csv_path, "error": str(e)}
-                        )
-                else:
-                    # CSV was generated but we don't have SQL
-                    # Try to extract SQL from response text
-                    sql_query = self._extract_sql_from_response(response_text)
-                    if sql_query:
-                        self.learning_manager.record_tool_usage(
+
+                        # Record successful tool usage (CSV exists either way)
+                        await self.learning_manager.record_tool_usage(
                             question=message,
                             tool_name="run_sql",
                             args={"sql": sql_query, "result_file": csv_path},
@@ -246,17 +416,45 @@ class EnhancedChatHandler:
                             metadata={
                                 "csv_file": csv_path,
                                 "response_preview": response_text[:100],
-                                "sql_extracted_from_text": True
+                                "sql_extracted": True,
+                                "user_id": user_id,
+                                "username": username
+                            }
+                        )
+                    except Exception as e:
+                        logger.error(f"Error executing SQL: {e}")
+                        # Still record success since CSV was generated
+                        await self.learning_manager.record_tool_usage(
+                            question=message,
+                            tool_name="run_sql",
+                            args={"sql": sql_query},
+                            success=True,  # CSV was generated, so it's a success
+                            metadata={"csv_file": csv_path, "error": str(e), "user_id": user_id}
+                        )
+                else:
+                    # CSV was generated but we don't have SQL; try to extract SQL from response text
+                    sql_query = self._extract_sql_from_response(response_text)
+                    if sql_query:
+                        await self.learning_manager.record_tool_usage(
+                            question=message,
+                            tool_name="run_sql",
+                            args={"sql": sql_query, "result_file": csv_path},
+                            success=True,
+                            metadata={
+                                "csv_file": csv_path,
+                                "response_preview": response_text[:100],
+                                "sql_extracted_from_text": True,
+                                "user_id": user_id
                             }
                         )
                     else:
                         # Record generic success
-                        self.learning_manager.record_tool_usage(
+                        await self.learning_manager.record_tool_usage(
                             question=message,
                             tool_name="agent_execution",
                             args={"message": message},
                             success=True,
-                            metadata={"csv_file": csv_path, "sql_not_found": True}
+                            metadata={"csv_file": csv_path, "sql_not_found": True, "user_id": user_id}
                         )
             
             # If no CSV was generated but we have SQL, try to execute it
@@ -273,7 +471,7 @@ class EnhancedChatHandler:
                         tool_success = True
                         
                         # Record successful tool usage
-                        self.learning_manager.record_tool_usage(
+                        await self.learning_manager.record_tool_usage(
                             question=message,
                             tool_name="run_sql",
                             args={"sql": sql_query, "result_file": csv_path},
@@ -281,19 +479,36 @@ class EnhancedChatHandler:
                             metadata={
                                 "csv_file": csv_path,
                                 "response_preview": response_text[:100],
-                                "sql_extracted": True
+                                "sql_extracted": True,
+                                "user_id": user_id
                             }
                         )
                 except Exception as e:
                     logger.error(f"Error executing SQL: {sql_query[:100]}...: {e}")
                     # Record failure
-                    self.learning_manager.record_tool_usage(
+                    await self.learning_manager.record_tool_usage(
                         question=message,
                         tool_name="run_sql",
                         args={"sql": sql_query},
                         success=False,
-                        metadata={"error": str(e)}
+                        metadata={"error": str(e), "user_id": user_id}
                     )
+            
+            # Save conversation to history
+            if response_text:
+                await self.conversation_store.save_conversation_turn(
+                    question=message,
+                    response=response_text,
+                    user_id=user_id,
+                    username=username,
+                    metadata={
+                        "enhanced_question": enhanced_question[:200] + "..." if len(enhanced_question) > 200 else enhanced_question,
+                        "learned_enhanced": learned_enhanced_question[:200] + "..." if len(learned_enhanced_question) > 200 else learned_enhanced_question,
+                        "sql_query": sql_query,
+                        "csv_generated": bool(csv_path),
+                        "tool_success": tool_success
+                    }
+                )
             
             # Prepare response
             response_data = {
@@ -302,7 +517,9 @@ class EnhancedChatHandler:
                 "csv_url": self.csv_manager.get_csv_url(csv_path) if csv_path else None,
                 "success": tool_success,
                 "timestamp": datetime.now().isoformat(),
-                "tool_used": tool_used
+                "tool_used": tool_used,
+                "user_id": user_id,
+                "username": username
             }
             
             return response_data
@@ -346,11 +563,16 @@ def create_app() -> FastAPI:
     
     # Initialize managers
     csv_manager = CSVResultManager()
+    conversation_store = ConversationStore(agent_memory=memory)
+    conversation_enhancer = ConversationContextEnhancer(conversation_store=conversation_store)
+    
     enhanced_handler = EnhancedChatHandler(
         agent=agent,
         learning_manager=learning_manager,
         csv_manager=csv_manager,
-        sql_runner=sql_runner
+        sql_runner=sql_runner,
+        conversation_store=conversation_store,
+        conversation_enhancer=conversation_enhancer
     )
     
     # Create base VannaFastAPIServer
@@ -364,17 +586,42 @@ def create_app() -> FastAPI:
     
     # Get the base app
     app = vanna_server.create_app()
+
+    # --- Request logging (similar visibility to the old TUI logs) ---
+
+    @app.middleware("http")
+    async def _log_requests(request: Request, call_next):
+        req_logger = logging.getLogger("vanna_api.request")
+        req_logger.info("%s %s", request.method, request.url.path)
+        try:
+            response = await call_next(request)
+        except Exception:
+            req_logger.exception("Unhandled error for %s %s", request.method, request.url.path)
+            raise
+        req_logger.info("%s %s -> %s", request.method, request.url.path, response.status_code)
+        return response
     
     # Store enhanced handler in app state
     app.state.enhanced_handler = enhanced_handler
     app.state.learning_manager = learning_manager
     app.state.csv_manager = csv_manager
+    app.state.conversation_store = conversation_store
+    app.state.conversation_enhancer = conversation_enhancer
     
     # Mount static files for CSV access - serve from current directory
     # This allows access to CSV files in subdirectories
     app.mount("/static", StaticFiles(directory="."), name="static")
     
     # --- CUSTOM ENDPOINTS ---
+
+    @app.on_event("startup")
+    async def _startup_load_learning_patterns():
+        """Load persisted learning patterns on server startup.
+
+        This is needed when starting via `uvicorn api:app`, because the
+        `if __name__ == '__main__'` block below does not run.
+        """
+        await learning_manager.ensure_patterns_loaded()
     
     @app.post("/api/v1/chat")
     async def chat_endpoint_v1(request: Request):
@@ -646,9 +893,220 @@ def create_app() -> FastAPI:
                     "chat_sse": "/api/vanna/v2/chat_sse",
                     "chat_websocket": "/api/vanna/v2/chat_websocket",
                     "chat_poll": "/api/vanna/v2/chat_poll"
+                },
+                "conversation": {
+                    "history": "/api/v1/conversation/history",
+                    "filter": "/api/v1/conversation/filter",
+                    "clear": "/api/v1/conversation/clear"
+                },
+                "learning": {
+                    "detailed_stats": "/api/v1/learning/detailed",
+                    "patterns": "/api/v1/learning/patterns",
+                    "enhance_test": "/api/v1/learning/enhance_test"
                 }
             }
         })
+    
+    # --- CONVERSATION MANAGEMENT ENDPOINTS ---
+    
+    @app.get("/api/v1/conversation/history")
+    async def get_conversation_history(user_id: Optional[str] = None, limit: int = 10):
+        """Get conversation history for a user (or all users if user_id not provided)"""
+        try:
+            conversation_store = app.state.conversation_store
+            conversations = await conversation_store.get_recent_conversations(
+                user_id=user_id, 
+                limit=limit
+            )
+            return JSONResponse(content={
+                "user_id": user_id,
+                "limit": limit,
+                "count": len(conversations),
+                "conversations": conversations
+            })
+        except Exception as e:
+            logger.error(f"Error getting conversation history: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.get("/api/v1/conversation/filter")
+    async def filter_conversations(
+        user_id: Optional[str] = None,
+        keyword: Optional[str] = None,
+        limit: int = 10
+    ):
+        """Filter conversations by user and/or keyword"""
+        try:
+            conversation_store = app.state.conversation_store
+            filter_keywords = [keyword] if keyword else None
+            
+            conversations = await conversation_store.get_filtered_conversations(
+                user_id=user_id,
+                filter_keywords=filter_keywords,
+                limit=limit
+            )
+            
+            return JSONResponse(content={
+                "user_id": user_id,
+                "keyword": keyword,
+                "limit": limit,
+                "count": len(conversations),
+                "conversations": conversations
+            })
+        except Exception as e:
+            logger.error(f"Error filtering conversations: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.delete("/api/v1/conversation/clear")
+    async def clear_conversation_history(user_id: Optional[str] = None):
+        """Clear conversation history for a user (or all users if user_id not provided)"""
+        try:
+            conversation_store = app.state.conversation_store
+            await conversation_store.clear_conversation_history(user_id=user_id)
+            return JSONResponse(content={
+                "status": "success",
+                "message": f"Cleared conversation history for user: {user_id if user_id else 'all users'}",
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            logger.error(f"Error clearing conversation history: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    # --- DETAILED LEARNING ENDPOINTS ---
+    
+    @app.get("/api/v1/learning/detailed")
+    async def get_detailed_learning_stats():
+        """Get detailed learning statistics with example patterns"""
+        try:
+            learning_manager = app.state.learning_manager
+            stats = learning_manager.get_learning_stats()
+            
+            # Get example query patterns
+            query_patterns = []
+            for pattern_id, pattern in list(learning_manager.query_patterns.items())[:5]:
+                query_patterns.append({
+                    "id": pattern_id,
+                    "question_pattern": pattern.question_pattern[:100] + "..." if len(pattern.question_pattern) > 100 else pattern.question_pattern,
+                    "sql_pattern": pattern.sql_pattern[:100] + "..." if len(pattern.sql_pattern) > 100 else pattern.sql_pattern,
+                    "tool_name": pattern.tool_name,
+                    "success_count": pattern.success_count,
+                    "last_used": pattern.last_used
+                })
+            
+            # Get example tool usage patterns
+            tool_patterns = []
+            for pattern_id, pattern in list(learning_manager.tool_patterns.items())[:5]:
+                tool_patterns.append({
+                    "id": pattern_id,
+                    "tool_name": pattern.tool_name,
+                    "question_pattern": pattern.question_pattern[:100] + "..." if len(pattern.question_pattern) > 100 else pattern.question_pattern,
+                    "success_count": pattern.success_count,
+                    "failure_count": pattern.failure_count,
+                    "last_used": pattern.last_used
+                })
+            
+            return JSONResponse(content={
+                **stats,
+                "example_query_patterns": query_patterns,
+                "example_tool_patterns": tool_patterns,
+                "total_patterns_examples_shown": len(query_patterns) + len(tool_patterns)
+            })
+        except Exception as e:
+            logger.error(f"Error getting detailed learning stats: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.get("/api/v1/learning/patterns")
+    async def get_learning_patterns(
+        pattern_type: Optional[str] = None,  # "query" or "tool"
+        limit: int = 10
+    ):
+        """Get learning patterns with optional filtering by type"""
+        try:
+            learning_manager = app.state.learning_manager
+            patterns = []
+            
+            if pattern_type is None or pattern_type == "query":
+                for pattern_id, pattern in list(learning_manager.query_patterns.items())[:limit]:
+                    patterns.append({
+                        "type": "query",
+                        "id": pattern_id,
+                        "question_pattern": pattern.question_pattern,
+                        "sql_pattern": pattern.sql_pattern,
+                        "tool_name": pattern.tool_name,
+                        "success_count": pattern.success_count,
+                        "last_used": pattern.last_used,
+                        "metadata": pattern.metadata
+                    })
+            
+            if pattern_type is None or pattern_type == "tool":
+                for pattern_id, pattern in list(learning_manager.tool_patterns.items())[:limit]:
+                    patterns.append({
+                        "type": "tool",
+                        "id": pattern_id,
+                        "tool_name": pattern.tool_name,
+                        "question_pattern": pattern.question_pattern,
+                        "args_pattern": pattern.args_pattern,
+                        "success_count": pattern.success_count,
+                        "failure_count": pattern.failure_count,
+                        "last_used": pattern.last_used,
+                        "metadata": pattern.metadata
+                    })
+            
+            return JSONResponse(content={
+                "pattern_type": pattern_type,
+                "limit": limit,
+                "count": len(patterns),
+                "patterns": patterns
+            })
+        except Exception as e:
+            logger.error(f"Error getting learning patterns: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/api/v1/learning/enhance_test")
+    async def test_learning_enhancement(request: Request):
+        """Test learning enhancement on a sample question"""
+        try:
+            learning_manager = app.state.learning_manager
+            request_data = await request.json()
+            question = request_data.get("question", "")
+            
+            if not question:
+                raise HTTPException(status_code=400, detail="Question is required")
+            
+            enhanced = learning_manager.enhance_question_with_learned_patterns(question)
+            
+            # Find similar successful queries
+            similar_queries = learning_manager.find_similar_successful_queries(question, limit=3)
+            similar_queries_data = []
+            for pattern in similar_queries:
+                similar_queries_data.append({
+                    "question_pattern": pattern.question_pattern,
+                    "sql_pattern": pattern.sql_pattern,
+                    "success_count": pattern.success_count,
+                    "last_used": pattern.last_used
+                })
+            
+            # Find similar tool usage
+            similar_tools = await learning_manager.find_similar_tool_usage(question, limit=3)
+            similar_tools_data = []
+            for pattern in similar_tools:
+                similar_tools_data.append({
+                    "tool_name": pattern.tool_name,
+                    "question_pattern": pattern.question_pattern,
+                    "success_count": pattern.success_count,
+                    "last_used": pattern.last_used
+                })
+            
+            return JSONResponse(content={
+                "original_question": question,
+                "enhanced_question": enhanced,
+                "similar_queries_found": len(similar_queries),
+                "similar_queries": similar_queries_data,
+                "similar_tools_found": len(similar_tools),
+                "similar_tools": similar_tools_data
+            })
+        except Exception as e:
+            logger.error(f"Error testing learning enhancement: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
     
     return app
 
@@ -664,11 +1122,14 @@ if __name__ == "__main__":
         logger.info(f"Loaded {len(learning_manager.query_patterns)} query patterns")
     
     asyncio.run(load_patterns())
-    
-    # Run the server
+
+    host = os.getenv("HOST", "0.0.0.0")
+    # Default to 8001 to avoid clashing with the Vanna UI (commonly 8000).
+    port = int(os.getenv("PORT", "8001"))
+
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
+        host=host,
+        port=port,
+        log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )

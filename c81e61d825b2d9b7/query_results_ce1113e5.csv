@@ -1,0 +1,9 @@
+TABLE_NAME,COLUMN_NAME,referenced_table,referenced_column,CONSTRAINT_NAME
+customers,salesRepEmployeeNumber,employees,employeeNumber,customers_ibfk_1
+employees,reportsTo,employees,employeeNumber,employees_ibfk_1
+employees,officeCode,offices,officeCode,employees_ibfk_2
+orderdetails,orderNumber,orders,orderNumber,orderdetails_ibfk_1
+orderdetails,productCode,products,productCode,orderdetails_ibfk_2
+orders,customerNumber,customers,customerNumber,orders_ibfk_1
+payments,customerNumber,customers,customerNumber,payments_ibfk_1
+products,productLine,productlines,productLine,products_ibfk_1

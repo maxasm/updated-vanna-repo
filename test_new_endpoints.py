@@ -11,6 +11,12 @@ import asyncio
 import websockets
 import threading
 
+
+def _api_base_url() -> str:
+    host = os.getenv("HOST", "localhost")
+    port = os.getenv("PORT", "8001")
+    return f"http://{host}:{port}"
+
 def start_server():
     """Start the API server in a separate process"""
     print("Starting API server...")
@@ -27,16 +33,18 @@ def test_health_endpoints():
     """Test health check endpoints"""
     print("\n1. Testing health endpoints:")
     
+    base_url = _api_base_url()
+
     # Test root health endpoint
-    print(f"   GET http://localhost:8000/health")
-    response = requests.get("http://localhost:8000/health")
+    print(f"   GET {base_url}/health")
+    response = requests.get(f"{base_url}/health")
     print(f"   Status: {response.status_code}")
     data = response.json()
     print(f"   Response: {json.dumps(data, indent=2)}")
     
     # Test v1 health endpoint
-    print(f"\n   GET http://localhost:8000/api/v1/health")
-    response = requests.get("http://localhost:8000/api/v1/health")
+    print(f"\n   GET {base_url}/api/v1/health")
+    response = requests.get(f"{base_url}/api/v1/health")
     print(f"   Status: {response.status_code}")
     data = response.json()
     print(f"   Response: {json.dumps(data, indent=2)}")
@@ -45,6 +53,7 @@ def test_health_endpoints():
 
 def test_chat_poll():
     """Test the polling chat endpoint"""
+    base_url = _api_base_url()
     print("\n2. Testing chat_poll endpoint (POST /api/vanna/v2/chat_poll):")
     
     payload = {
@@ -59,11 +68,11 @@ def test_chat_poll():
         }
     }
     
-    print(f"   POST http://localhost:8000/api/vanna/v2/chat_poll")
+    print(f"   POST {base_url}/api/vanna/v2/chat_poll")
     print(f"   Payload: {json.dumps(payload, indent=2)}")
     
     try:
-        response = requests.post("http://localhost:8000/api/vanna/v2/chat_poll", 
+        response = requests.post(f"{base_url}/api/vanna/v2/chat_poll", 
                                 json=payload, timeout=30)
         print(f"   Status: {response.status_code}")
         
@@ -84,6 +93,7 @@ def test_chat_poll():
 
 def test_chat_sse():
     """Test the SSE chat endpoint"""
+    base_url = _api_base_url()
     print("\n3. Testing chat_sse endpoint (POST /api/vanna/v2/chat_sse):")
     
     payload = {
@@ -98,11 +108,11 @@ def test_chat_sse():
         }
     }
     
-    print(f"   POST http://localhost:8000/api/vanna/v2/chat_sse")
+    print(f"   POST {base_url}/api/vanna/v2/chat_sse")
     print(f"   Payload: {json.dumps(payload, indent=2)}")
     
     try:
-        response = requests.post("http://localhost:8000/api/vanna/v2/chat_sse", 
+        response = requests.post(f"{base_url}/api/vanna/v2/chat_sse", 
                                 json=payload, timeout=30, stream=True)
         print(f"   Status: {response.status_code}")
         print(f"   Content-Type: {response.headers.get('content-type')}")
@@ -142,10 +152,12 @@ def test_chat_sse():
 
 async def test_websocket():
     """Test the WebSocket chat endpoint"""
+    base_url = _api_base_url()
+    ws_url = base_url.replace("http://", "ws://").replace("https://", "wss://")
     print("\n4. Testing chat_websocket endpoint (WS /api/vanna/v2/chat_websocket):")
     
     try:
-        async with websockets.connect("ws://localhost:8000/api/vanna/v2/chat_websocket") as websocket:
+        async with websockets.connect(f"{ws_url}/api/vanna/v2/chat_websocket") as websocket:
             print("   ✓ WebSocket connected")
             
             # Send a message

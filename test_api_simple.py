@@ -4,9 +4,12 @@
 import requests
 import json
 import time
+import os
 
 def test_api():
-    base_url = "http://localhost:8000"
+    host = os.getenv("HOST", "localhost")
+    port = os.getenv("PORT", "8001")
+    base_url = f"http://{host}:{port}"
     
     # Test health endpoint
     print("Testing health endpoint...")

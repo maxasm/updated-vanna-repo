@@ -1,0 +1,3 @@
+CONSTRAINT_SCHEMA,CONSTRAINT_NAME,UPDATE_RULE,DELETE_RULE,TABLE_NAME,COLUMN_NAME
+classicmodels,orders_ibfk_1,NO ACTION,NO ACTION,orders,customerNumber
+classicmodels,payments_ibfk_1,NO ACTION,NO ACTION,payments,customerNumber

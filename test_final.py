@@ -28,7 +28,9 @@ def run_test():
     print("⏳ Waiting for server to start...")
     time.sleep(5)
     
-    base_url = "http://localhost:8000"
+    host = os.getenv("HOST", "localhost")
+    port = os.getenv("PORT", "8001")
+    base_url = f"http://{host}:{port}"
     
     try:
         # Test 1: Health endpoint

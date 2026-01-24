@@ -36,12 +36,12 @@ async def test_learning_manager_basic():
     # Create learning manager with simple mock
     memory = SimpleMockMemory()
     
-    # We need to bypass the __init__ that calls _load_patterns
     # Create LearningManager instance manually
     learning_manager = LearningManager.__new__(LearningManager)
     learning_manager.memory = memory
     learning_manager.query_patterns = {}
     learning_manager.tool_patterns = {}
+    learning_manager._patterns_loaded = True
     
     # Test pattern extraction
     print("\n📝 Testing pattern extraction...")

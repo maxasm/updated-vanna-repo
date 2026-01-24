@@ -1,0 +1,9 @@
+TABLE_NAME,COLUMN_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
+customers,salesRepEmployeeNumber,employees,employeeNumber
+employees,officeCode,offices,officeCode
+employees,reportsTo,employees,employeeNumber
+orderdetails,orderNumber,orders,orderNumber
+orderdetails,productCode,products,productCode
+orders,customerNumber,customers,customerNumber
+payments,customerNumber,customers,customerNumber
+products,productLine,productlines,productLine

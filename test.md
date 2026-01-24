@@ -1,226 +1,262 @@
-# Vanna AI REST API - Test Commands
+# Vanna AI REST API – curl Test Commands
 
-This document provides curl commands to test the migrated Vanna AI REST API.
+This file is a **copy/paste** set of curl commands you can use to test the FastAPI server implemented in `api.py`.
 
 ## Prerequisites
 
-**IMPORTANT:** You need to run the new REST API server, not the old TUI.
+Start the REST API (FastAPI/Uvicorn):
 
-1. Start the REST API server:
-   ```bash
-   python api.py
-   ```
-
-   This starts the FastAPI server on port 8000.
-
-2. Or start it in background:
-   ```bash
-   python api.py &
-   ```
-
-3. Wait for server to start (5-10 seconds). You should see output like:
-   ```
-   INFO:     Started server process [PID]
-   INFO:     Waiting for application startup.
-   INFO:     Application startup complete.
-   INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-   ```
-
-**Note:** `python main.py` starts the old TUI interface. For the REST API, use `python api.py`.
-
-## Base URL
-All commands use: `http://localhost:8000`
-
-## Test Commands
-
-### 1. Health Check
 ```bash
-curl -s http://localhost:8000/api/v1/health
+python api.py
 ```
 
-With pretty JSON output:
+Notes:
+
+- `python main.py` starts the REST API server (the legacy CLI/TUI has been removed).
+- The API requires `OPENAI_API_KEY` and MySQL env vars (`MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASSWORD`, etc.).
+
+## Setup (recommended)
+
+Define a base URL and a reusable “user identity” payload.
+
 ```bash
-curl -s http://localhost:8000/api/v1/health | python3 -m json.tool
+export BASE_URL="http://localhost:8001"
+
+# IMPORTANT: this API reads "headers" from the JSON body (request_data.headers),
+# not from actual HTTP headers.
+export VANNA_HEADERS='{"x-user-id":"test_user","x-username":"tester","x-user-groups":"api_users"}'
 ```
 
-### 2. Learning Statistics
+For pretty printing, if you have `jq`:
+
 ```bash
-curl -s http://localhost:8000/api/v1/learning/stats
+alias pj='jq -C .'
 ```
 
-With pretty JSON output:
+## 1) Health checks
+
+### Root health (lists endpoints)
+
 ```bash
-curl -s http://localhost:8000/api/v1/learning/stats | python3 -m json.tool
+curl -sS "$BASE_URL/health" | jq .
 ```
 
-### 3. Chat Endpoint - Simple Query
+### v1 health
+
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
+curl -sS "$BASE_URL/api/v1/health" | jq .
+```
+
+## 2) Learning endpoints
+
+### Basic stats
+
+```bash
+curl -sS "$BASE_URL/api/v1/learning/stats" | jq .
+```
+
+### Detailed stats (includes sample patterns)
+
+```bash
+curl -sS "$BASE_URL/api/v1/learning/detailed" | jq .
+```
+
+### List stored patterns
+
+```bash
+curl -sS "$BASE_URL/api/v1/learning/patterns?limit=10" | jq .
+curl -sS "$BASE_URL/api/v1/learning/patterns?pattern_type=query&limit=5" | jq .
+curl -sS "$BASE_URL/api/v1/learning/patterns?pattern_type=tool&limit=5" | jq .
+```
+
+### Test “learning enhancement” of a question
+
+```bash
+curl -sS -X POST "$BASE_URL/api/v1/learning/enhance_test" \
+  -H 'Content-Type: application/json' \
   -d '{
-    "message": "How many customers are there?",
-    "headers": {
-      "x-user-id": "test_user",
-      "x-username": "tester",
-      "x-user-groups": "api_users"
-    },
-    "metadata": {
-      "test": true
-    }
-  }'
+    "question": "How many customers are there?"
+  }' | jq .
 ```
 
-### 4. Chat Endpoint - Table Listing
+## 3) Chat (v1) – request/response
+
+`POST /api/v1/chat` returns:
+
+- `answer` (text)
+- `sql` (best-effort extraction)
+- `csv_url` (if results were saved)
+- `success`, `tool_used`, timestamp, user fields
+
+### Minimal “smoke test” chat
+
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
+curl -sS -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "Hello!",
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true}
+  }' | jq .
+```
+
+### Typical SQL-producing prompts
+
+```bash
+curl -sS -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
   -d '{
     "message": "Show me all tables in the database",
-    "headers": {
-      "x-user-id": "test_user",
-      "x-username": "tester",
-      "x-user-groups": "api_users"
-    },
-    "metadata": {
-      "test": true
-    }
-  }'
-```
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "case": "tables"}
+  }' | jq .
 
-### 5. Chat Endpoint - Product Query
-```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
+curl -sS -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
   -d '{
     "message": "What are the top 5 most expensive products?",
-    "headers": {
-      "x-user-id": "test_user",
-      "x-username": "tester",
-      "x-user-groups": "api_users"
-    },
-    "metadata": {
-      "test": true
-    }
-  }'
-```
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "case": "top-products"}
+  }' | jq .
 
-### 6. Chat Endpoint - Employee Query
-```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
+curl -sS -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
   -d '{
     "message": "List all employees and their offices",
-    "headers": {
-      "x-user-id": "test_user",
-      "x-username": "tester",
-      "x-user-groups": "api_users"
-    },
-    "metadata": {
-      "test": true
-    }
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "case": "employees"}
+  }' | jq .
+```
+
+### Error case: missing message (should return 400)
+
+```bash
+curl -sS -i -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
+  -d '{"headers": '$VANNA_HEADERS'}'
+```
+
+## 4) Chat (v2) – polling endpoint
+
+`POST /api/vanna/v2/chat_poll` behaves similarly to v1 chat (request/response).
+
+```bash
+curl -sS -X POST "$BASE_URL/api/vanna/v2/chat_poll" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "How many customers are there?",
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "version": "v2_poll"}
+  }' | jq .
+```
+
+## 5) Chat (v2) – SSE streaming endpoint
+
+`POST /api/vanna/v2/chat_sse` streams events (Server-Sent Events).
+
+Tip: use `-N` to disable curl buffering.
+
+```bash
+curl -N -sS -X POST "$BASE_URL/api/vanna/v2/chat_sse" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: text/event-stream' \
+  -d '{
+    "message": "Show me all tables in the database",
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "version": "v2_sse"}
   }'
 ```
 
-### 7. Training Endpoint
-```bash
-curl -s -X POST http://localhost:8000/api/v1/train \
-  -H "Content-Type: application/json" \
-  -d '{}'
+You should see lines like:
+
+```text
+data: {"event":"start",...}
+data: {"event":"chunk","text":"..."}
+data: {"event":"sql","sql":"SELECT ..."}
+data: {"event":"csv","url":"/static/...csv"}
+data: {"event":"complete",...}
 ```
 
-### 8. Web Interface Check
+## 6) Conversation history endpoints
+
+### Get recent conversations
+
 ```bash
-curl -s -I http://localhost:8000/
+curl -sS "$BASE_URL/api/v1/conversation/history?user_id=test_user&limit=5" | jq .
 ```
 
-## Quick Test Commands (Copy & Paste)
+### Filter conversations by keyword
 
-### Health check:
 ```bash
-curl -s http://localhost:8000/api/v1/health
+curl -sS "$BASE_URL/api/v1/conversation/filter?user_id=test_user&keyword=customers&limit=5" | jq .
 ```
 
-### Learning stats:
+### Clear conversation history
+
 ```bash
-curl -s http://localhost:8000/api/v1/learning/stats
+curl -sS -X DELETE "$BASE_URL/api/v1/conversation/clear?user_id=test_user" | jq .
 ```
 
-### Simple chat query:
+## 7) Training endpoint (schema training placeholder)
+
+This endpoint iterates over `INFORMATION_SCHEMA.COLUMNS` and returns a count.
+
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/chat -H "Content-Type: application/json" -d '{"message": "How many customers are there?", "headers": {"x-user-id": "test", "x-username": "tester", "x-user-groups": "api_users"}, "metadata": {"test": true}}'
+curl -sS -X POST "$BASE_URL/api/v1/train" \
+  -H 'Content-Type: application/json' \
+  -d '{}' | jq .
 ```
 
-### Table listing:
+## 8) CSV download flow (if `csv_url` is returned)
+
+This grabs `csv_url` from the chat response and downloads it.
+
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/chat -H "Content-Type: application/json" -d '{"message": "Show me all tables", "headers": {"x-user-id": "test", "x-username": "tester", "x-user-groups": "api_users"}, "metadata": {"test": true}}'
-```
+CSV_URL=$(curl -sS -X POST "$BASE_URL/api/v1/chat" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "How many customers are there?",
+    "headers": '$VANNA_HEADERS',
+    "metadata": {"test": true, "case": "csv-download"}
+  }' | jq -r '.csv_url // empty')
 
-### With pretty JSON output:
-```bash
-curl -s -X POST http://localhost:8000/api/v1/chat -H "Content-Type: application/json" -d '{"message": "Show me all tables"}' | python3 -m json.tool
-```
+echo "csv_url=$CSV_URL"
 
-## Response Format
-
-The API returns JSON with the following structure:
-```json
-{
-  "answer": "Natural language response from the AI",
-  "sql": "Extracted SQL query (when available)",
-  "csv_url": "URL to download CSV file (when generated)",
-  "success": true/false,
-  "timestamp": "ISO timestamp",
-  "tool_used": true/false
-}
-```
-
-## Testing with Response Parsing
-
-### Extract specific fields:
-```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "How many customers are there?"}' \
-  | python3 -c "import sys, json; data=json.load(sys.stdin); print('Answer preview:', data.get('answer', '')[:200]); print('SQL:', data.get('sql', 'None')); print('CSV URL:', data.get('csv_url', 'None')); print('Success:', data.get('success', False))"
-```
-
-### Check answer length only:
-```bash
-curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "How many customers are there?"}' \
-  | python3 -c "import sys, json; data=json.load(sys.stdin); print('Answer length:', len(data.get('answer', '')))"
-```
-
-## Testing CSV Download (if CSV URL is provided)
-
-If the response includes a `csv_url` field:
-```bash
-# First get the CSV URL
-CSV_URL=$(curl -s -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "How many customers are there?"}' \
-  | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('csv_url', ''))")
-
-# Then download the CSV if URL exists
 if [ -n "$CSV_URL" ]; then
-  curl -s "http://localhost:8000$CSV_URL" -o results.csv
-  echo "CSV downloaded to results.csv"
+  curl -sS "$BASE_URL$CSV_URL" -o results.csv
+  echo "Downloaded results.csv"
+  head -n 5 results.csv
+else
+  echo "No csv_url returned (tool may not have run or produced rows)."
 fi
 ```
 
 ## Troubleshooting
 
-1. **Server not running**: Make sure to start the API server first
-2. **Connection refused**: Wait a few seconds for server to start
-3. **Timeout**: Some queries may take 10-30 seconds to process
-4. **JSON parsing error**: Ensure the curl command has correct JSON syntax
+- **500 with OPENAI_API_KEY error**: ensure `OPENAI_API_KEY` is set in your shell or `.env`.
+- **MySQL errors**: ensure `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_HOST` are correct.
+- **Long responses**: SQL/tool calls may take 10–60s depending on the model and DB.
 
-## API Endpoints Summary
+## Endpoint map (implemented in `api.py`)
 
-- `POST /api/v1/chat` - Main chat endpoint
-- `GET /api/v1/learning/stats` - Learning statistics
-- `GET /api/v1/health` - Health check
-- `POST /api/v1/train` - Training endpoint
-- `GET /` - Web interface
-- `/static/` - Static files (CSV downloads)
+- Health:
+  - `GET /health`
+  - `GET /api/v1/health`
+- Chat:
+  - `POST /api/v1/chat`
+  - `POST /api/vanna/v2/chat_poll`
+  - `POST /api/vanna/v2/chat_sse` (SSE)
+  - `WS  /api/vanna/v2/chat_websocket` *(WebSocket; curl is not ideal for this)*
+- Learning:
+  - `GET /api/v1/learning/stats`
+  - `GET /api/v1/learning/detailed`
+  - `GET /api/v1/learning/patterns`
+  - `POST /api/v1/learning/enhance_test`
+- Conversation:
+  - `GET /api/v1/conversation/history`
+  - `GET /api/v1/conversation/filter`
+  - `DELETE /api/v1/conversation/clear`
+- Training:
+  - `POST /api/v1/train`
+- Static files (CSV URLs point here):
+  - `GET /static/...`

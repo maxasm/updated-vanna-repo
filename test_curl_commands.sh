@@ -15,7 +15,9 @@ echo "Wait for server to start, then run these tests:"
 echo ""
 
 # Base URL
-BASE_URL="http://localhost:8000"
+HOST="${HOST:-localhost}"
+PORT="${PORT:-8001}"
+BASE_URL="http://${HOST}:${PORT}"
 
 echo "1. Test health endpoint:"
 echo "curl -s $BASE_URL/api/v1/health | python3 -m json.tool"
