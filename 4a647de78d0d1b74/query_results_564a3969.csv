@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,column_count
+classicmodels,productlines,4
+classicmodels,products,9
+classicmodels,offices,9
+classicmodels,employees,8
+classicmodels,customers,13
+classicmodels,payments,4
+classicmodels,orders,7
+classicmodels,orderdetails,5

@@ -1,0 +1,9 @@
+TABLE_NAME,primary_key
+customers,customerNumber
+employees,employeeNumber
+offices,officeCode
+orderdetails,"orderNumber,productCode"
+orders,orderNumber
+payments,"customerNumber,checkNumber"
+productlines,productLine
+products,productCode

@@ -1,0 +1,11 @@
+TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION
+classicmodels,customers,customerNumber,1
+classicmodels,employees,employeeNumber,1
+classicmodels,offices,officeCode,1
+classicmodels,orderdetails,orderNumber,1
+classicmodels,orderdetails,productCode,2
+classicmodels,orders,orderNumber,1
+classicmodels,payments,customerNumber,1
+classicmodels,payments,checkNumber,2
+classicmodels,productlines,productLine,1
+classicmodels,products,productCode,1

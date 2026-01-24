@@ -1,0 +1,9 @@
+TABLE_NAME,approx_rows,column_count,CREATE_TIME,UPDATE_TIME,ENGINE
+customers,0,13,2026-01-23 09:31:47,,InnoDB
+employees,23,8,2026-01-23 09:31:47,,InnoDB
+offices,7,9,2026-01-23 09:31:47,,InnoDB
+orderdetails,0,5,2026-01-23 09:31:47,,InnoDB
+orders,0,7,2026-01-23 09:31:47,,InnoDB
+payments,0,4,2026-01-23 09:31:47,,InnoDB
+productlines,5,4,2026-01-23 09:31:47,,InnoDB
+products,110,9,2026-01-23 09:31:47,,InnoDB

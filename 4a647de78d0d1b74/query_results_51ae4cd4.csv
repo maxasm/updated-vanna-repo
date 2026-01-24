@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,primary_key_columns
+classicmodels,customers,customerNumber
+classicmodels,employees,employeeNumber
+classicmodels,offices,officeCode
+classicmodels,orderdetails,"orderNumber,productCode"
+classicmodels,orders,orderNumber
+classicmodels,payments,"customerNumber,checkNumber"
+classicmodels,productlines,productLine
+classicmodels,products,productCode

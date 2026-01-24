@@ -1,0 +1,10 @@
+COLUMN_NAME,DATA_TYPE
+productCode,varchar
+productName,varchar
+productLine,varchar
+productScale,varchar
+productVendor,varchar
+productDescription,text
+quantityInStock,smallint
+buyPrice,decimal
+MSRP,decimal

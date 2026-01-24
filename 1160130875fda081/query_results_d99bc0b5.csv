@@ -1,0 +1,8 @@
+TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE
+classicmodels,customers,contactFirstName,varchar
+classicmodels,customers,contactLastName,varchar
+classicmodels,customers,customerName,varchar
+classicmodels,employees,firstName,varchar
+classicmodels,employees,jobTitle,varchar
+classicmodels,employees,lastName,varchar
+classicmodels,products,productName,varchar

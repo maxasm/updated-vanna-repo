@@ -1,0 +1,9 @@
+TABLE_NAME,column_count
+customers,13
+employees,8
+offices,9
+orderdetails,5
+orders,7
+payments,4
+productlines,4
+products,9

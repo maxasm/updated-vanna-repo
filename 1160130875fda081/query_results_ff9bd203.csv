@@ -1,0 +1,4 @@
+TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,DATA_TYPE
+classicmodels,orderdetails,priceEach,decimal
+classicmodels,payments,amount,decimal
+classicmodels,products,buyPrice,decimal

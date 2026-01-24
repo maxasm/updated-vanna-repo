@@ -1,0 +1,7 @@
+status,num_orders
+Shipped,303
+Cancelled,6
+In Process,6
+Resolved,4
+On Hold,4
+Disputed,3

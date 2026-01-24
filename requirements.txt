@@ -3,3 +3,6 @@ python-dotenv
 tabulate
 pandas
 chromadb
+matplotlib
+fastapi
+uvicorn

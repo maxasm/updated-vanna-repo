@@ -1,0 +1,7 @@
+TABLE_SCHEMA,TABLE_NAME,foreign_keys
+classicmodels,customers,salesRepEmployeeNumber -> employees.employeeNumber
+classicmodels,employees,officeCode -> offices.officeCode; reportsTo -> employees.employeeNumber
+classicmodels,orderdetails,productCode -> products.productCode; orderNumber -> orders.orderNumber
+classicmodels,orders,customerNumber -> customers.customerNumber
+classicmodels,payments,customerNumber -> customers.customerNumber
+classicmodels,products,productLine -> productlines.productLine

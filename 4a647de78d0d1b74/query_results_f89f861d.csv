@@ -1,0 +1,9 @@
+TABLE_NAME,TABLE_ROWS,ENGINE,CREATE_TIME
+customers,0,InnoDB,2026-01-23 09:31:47
+employees,23,InnoDB,2026-01-23 09:31:47
+offices,7,InnoDB,2026-01-23 09:31:47
+orderdetails,0,InnoDB,2026-01-23 09:31:47
+orders,0,InnoDB,2026-01-23 09:31:47
+payments,0,InnoDB,2026-01-23 09:31:47
+productlines,5,InnoDB,2026-01-23 09:31:47
+products,110,InnoDB,2026-01-23 09:31:47

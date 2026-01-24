@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,REFERENCED_TABLE_SCHEMA,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME
+classicmodels,customers,salesRepEmployeeNumber,classicmodels,employees,employeeNumber
+classicmodels,employees,officeCode,classicmodels,offices,officeCode
+classicmodels,employees,reportsTo,classicmodels,employees,employeeNumber
+classicmodels,orderdetails,orderNumber,classicmodels,orders,orderNumber
+classicmodels,orderdetails,productCode,classicmodels,products,productCode
+classicmodels,orders,customerNumber,classicmodels,customers,customerNumber
+classicmodels,payments,customerNumber,classicmodels,customers,customerNumber
+classicmodels,products,productLine,classicmodels,productlines,productLine

@@ -1,0 +1,24 @@
+employeeNumber,employeeName,jobTitle,officeCode,officeCity,officeState,officeCountry,officePhone
+1143,Anthony Bow,Sales Manager (NA),1,San Francisco,CA,USA,+1 650 219 4782
+1076,Jeff Firrelli,VP Marketing,1,San Francisco,CA,USA,+1 650 219 4782
+1165,Leslie Jennings,Sales Rep,1,San Francisco,CA,USA,+1 650 219 4782
+1002,Diane Murphy,President,1,San Francisco,CA,USA,+1 650 219 4782
+1056,Mary Patterson,VP Sales,1,San Francisco,CA,USA,+1 650 219 4782
+1166,Leslie Thompson,Sales Rep,1,San Francisco,CA,USA,+1 650 219 4782
+1188,Julie Firrelli,Sales Rep,2,Boston,MA,USA,+1 215 837 0825
+1216,Steve Patterson,Sales Rep,2,Boston,MA,USA,+1 215 837 0825
+1286,Foon Yue Tseng,Sales Rep,3,NYC,NY,USA,+1 212 555 3000
+1323,George Vanauf,Sales Rep,3,NYC,NY,USA,+1 212 555 3000
+1102,Gerard Bondur,Sale Manager (EMEA),4,Paris,,France,+33 14 723 4404
+1337,Loui Bondur,Sales Rep,4,Paris,,France,+33 14 723 4404
+1401,Pamela Castillo,Sales Rep,4,Paris,,France,+33 14 723 4404
+1702,Martin Gerard,Sales Rep,4,Paris,,France,+33 14 723 4404
+1370,Gerard Hernandez,Sales Rep,4,Paris,,France,+33 14 723 4404
+1625,Yoshimi Kato,Sales Rep,5,Tokyo,Chiyoda-Ku,Japan,+81 33 224 5000
+1621,Mami Nishi,Sales Rep,5,Tokyo,Chiyoda-Ku,Japan,+81 33 224 5000
+1611,Andy Fixter,Sales Rep,6,Sydney,,Australia,+61 2 9264 2451
+1619,Tom King,Sales Rep,6,Sydney,,Australia,+61 2 9264 2451
+1612,Peter Marsh,Sales Rep,6,Sydney,,Australia,+61 2 9264 2451
+1088,William Patterson,Sales Manager (APAC),6,Sydney,,Australia,+61 2 9264 2451
+1501,Larry Bott,Sales Rep,7,London,,UK,+44 20 7877 2041
+1504,Barry Jones,Sales Rep,7,London,,UK,+44 20 7877 2041

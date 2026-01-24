@@ -1,0 +1,9 @@
+TABLE_NAME,approx_rows,column_count
+customers,0,13
+employees,23,8
+offices,7,9
+orderdetails,0,5
+orders,0,7
+payments,0,4
+productlines,5,4
+products,110,9

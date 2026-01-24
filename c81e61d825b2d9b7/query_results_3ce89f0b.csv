@@ -1,0 +1,259 @@
+TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE
+classicmodels,customers,BASE TABLE
+classicmodels,employees,BASE TABLE
+classicmodels,offices,BASE TABLE
+classicmodels,orderdetails,BASE TABLE
+classicmodels,orders,BASE TABLE
+classicmodels,payments,BASE TABLE
+classicmodels,productlines,BASE TABLE
+classicmodels,products,BASE TABLE
+mysql,columns_priv,BASE TABLE
+mysql,component,BASE TABLE
+mysql,db,BASE TABLE
+mysql,default_roles,BASE TABLE
+mysql,engine_cost,BASE TABLE
+mysql,func,BASE TABLE
+mysql,general_log,BASE TABLE
+mysql,global_grants,BASE TABLE
+mysql,gtid_executed,BASE TABLE
+mysql,help_category,BASE TABLE
+mysql,help_keyword,BASE TABLE
+mysql,help_relation,BASE TABLE
+mysql,help_topic,BASE TABLE
+mysql,innodb_index_stats,BASE TABLE
+mysql,innodb_table_stats,BASE TABLE
+mysql,ndb_binlog_index,BASE TABLE
+mysql,password_history,BASE TABLE
+mysql,plugin,BASE TABLE
+mysql,procs_priv,BASE TABLE
+mysql,proxies_priv,BASE TABLE
+mysql,replication_asynchronous_connection_failover,BASE TABLE
+mysql,replication_asynchronous_connection_failover_managed,BASE TABLE
+mysql,replication_group_configuration_version,BASE TABLE
+mysql,replication_group_member_actions,BASE TABLE
+mysql,role_edges,BASE TABLE
+mysql,server_cost,BASE TABLE
+mysql,servers,BASE TABLE
+mysql,slave_master_info,BASE TABLE
+mysql,slave_relay_log_info,BASE TABLE
+mysql,slave_worker_info,BASE TABLE
+mysql,slow_log,BASE TABLE
+mysql,tables_priv,BASE TABLE
+mysql,time_zone,BASE TABLE
+mysql,time_zone_leap_second,BASE TABLE
+mysql,time_zone_name,BASE TABLE
+mysql,time_zone_transition,BASE TABLE
+mysql,time_zone_transition_type,BASE TABLE
+mysql,user,BASE TABLE
+performance_schema,accounts,BASE TABLE
+performance_schema,binary_log_transaction_compression_stats,BASE TABLE
+performance_schema,cond_instances,BASE TABLE
+performance_schema,data_lock_waits,BASE TABLE
+performance_schema,data_locks,BASE TABLE
+performance_schema,error_log,BASE TABLE
+performance_schema,events_errors_summary_by_account_by_error,BASE TABLE
+performance_schema,events_errors_summary_by_host_by_error,BASE TABLE
+performance_schema,events_errors_summary_by_thread_by_error,BASE TABLE
+performance_schema,events_errors_summary_by_user_by_error,BASE TABLE
+performance_schema,events_errors_summary_global_by_error,BASE TABLE
+performance_schema,events_stages_current,BASE TABLE
+performance_schema,events_stages_history,BASE TABLE
+performance_schema,events_stages_history_long,BASE TABLE
+performance_schema,events_stages_summary_by_account_by_event_name,BASE TABLE
+performance_schema,events_stages_summary_by_host_by_event_name,BASE TABLE
+performance_schema,events_stages_summary_by_thread_by_event_name,BASE TABLE
+performance_schema,events_stages_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_stages_summary_global_by_event_name,BASE TABLE
+performance_schema,events_statements_current,BASE TABLE
+performance_schema,events_statements_histogram_by_digest,BASE TABLE
+performance_schema,events_statements_histogram_global,BASE TABLE
+performance_schema,events_statements_history,BASE TABLE
+performance_schema,events_statements_history_long,BASE TABLE
+performance_schema,events_statements_summary_by_account_by_event_name,BASE TABLE
+performance_schema,events_statements_summary_by_digest,BASE TABLE
+performance_schema,events_statements_summary_by_host_by_event_name,BASE TABLE
+performance_schema,events_statements_summary_by_program,BASE TABLE
+performance_schema,events_statements_summary_by_thread_by_event_name,BASE TABLE
+performance_schema,events_statements_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_statements_summary_global_by_event_name,BASE TABLE
+performance_schema,events_transactions_current,BASE TABLE
+performance_schema,events_transactions_history,BASE TABLE
+performance_schema,events_transactions_history_long,BASE TABLE
+performance_schema,events_transactions_summary_by_account_by_event_name,BASE TABLE
+performance_schema,events_transactions_summary_by_host_by_event_name,BASE TABLE
+performance_schema,events_transactions_summary_by_thread_by_event_name,BASE TABLE
+performance_schema,events_transactions_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_transactions_summary_global_by_event_name,BASE TABLE
+performance_schema,events_waits_current,BASE TABLE
+performance_schema,events_waits_history,BASE TABLE
+performance_schema,events_waits_history_long,BASE TABLE
+performance_schema,events_waits_summary_by_account_by_event_name,BASE TABLE
+performance_schema,events_waits_summary_by_host_by_event_name,BASE TABLE
+performance_schema,events_waits_summary_by_instance,BASE TABLE
+performance_schema,events_waits_summary_by_thread_by_event_name,BASE TABLE
+performance_schema,events_waits_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_waits_summary_global_by_event_name,BASE TABLE
+performance_schema,file_instances,BASE TABLE
+performance_schema,file_summary_by_event_name,BASE TABLE
+performance_schema,file_summary_by_instance,BASE TABLE
+performance_schema,global_status,BASE TABLE
+performance_schema,global_variables,BASE TABLE
+performance_schema,host_cache,BASE TABLE
+performance_schema,hosts,BASE TABLE
+performance_schema,innodb_redo_log_files,BASE TABLE
+performance_schema,keyring_component_status,BASE TABLE
+performance_schema,keyring_keys,BASE TABLE
+performance_schema,log_status,BASE TABLE
+performance_schema,memory_summary_by_account_by_event_name,BASE TABLE
+performance_schema,memory_summary_by_host_by_event_name,BASE TABLE
+performance_schema,memory_summary_by_thread_by_event_name,BASE TABLE
+performance_schema,memory_summary_by_user_by_event_name,BASE TABLE
+performance_schema,memory_summary_global_by_event_name,BASE TABLE
+performance_schema,metadata_locks,BASE TABLE
+performance_schema,mutex_instances,BASE TABLE
+performance_schema,objects_summary_global_by_type,BASE TABLE
+performance_schema,performance_timers,BASE TABLE
+performance_schema,persisted_variables,BASE TABLE
+performance_schema,prepared_statements_instances,BASE TABLE
+performance_schema,processlist,BASE TABLE
+performance_schema,replication_applier_configuration,BASE TABLE
+performance_schema,replication_applier_filters,BASE TABLE
+performance_schema,replication_applier_global_filters,BASE TABLE
+performance_schema,replication_applier_status,BASE TABLE
+performance_schema,replication_applier_status_by_coordinator,BASE TABLE
+performance_schema,replication_applier_status_by_worker,BASE TABLE
+performance_schema,replication_asynchronous_connection_failover,BASE TABLE
+performance_schema,replication_asynchronous_connection_failover_managed,BASE TABLE
+performance_schema,replication_connection_configuration,BASE TABLE
+performance_schema,replication_connection_status,BASE TABLE
+performance_schema,replication_group_member_stats,BASE TABLE
+performance_schema,replication_group_members,BASE TABLE
+performance_schema,rwlock_instances,BASE TABLE
+performance_schema,session_account_connect_attrs,BASE TABLE
+performance_schema,session_connect_attrs,BASE TABLE
+performance_schema,session_status,BASE TABLE
+performance_schema,session_variables,BASE TABLE
+performance_schema,setup_actors,BASE TABLE
+performance_schema,setup_consumers,BASE TABLE
+performance_schema,setup_instruments,BASE TABLE
+performance_schema,setup_objects,BASE TABLE
+performance_schema,setup_threads,BASE TABLE
+performance_schema,socket_instances,BASE TABLE
+performance_schema,socket_summary_by_event_name,BASE TABLE
+performance_schema,socket_summary_by_instance,BASE TABLE
+performance_schema,status_by_account,BASE TABLE
+performance_schema,status_by_host,BASE TABLE
+performance_schema,status_by_thread,BASE TABLE
+performance_schema,status_by_user,BASE TABLE
+performance_schema,table_handles,BASE TABLE
+performance_schema,table_io_waits_summary_by_index_usage,BASE TABLE
+performance_schema,table_io_waits_summary_by_table,BASE TABLE
+performance_schema,table_lock_waits_summary_by_table,BASE TABLE
+performance_schema,threads,BASE TABLE
+performance_schema,tls_channel_status,BASE TABLE
+performance_schema,user_defined_functions,BASE TABLE
+performance_schema,user_variables_by_thread,BASE TABLE
+performance_schema,users,BASE TABLE
+performance_schema,variables_by_thread,BASE TABLE
+performance_schema,variables_info,BASE TABLE
+sys,sys_config,BASE TABLE
+sys,host_summary,VIEW
+sys,host_summary_by_file_io,VIEW
+sys,host_summary_by_file_io_type,VIEW
+sys,host_summary_by_stages,VIEW
+sys,host_summary_by_statement_latency,VIEW
+sys,host_summary_by_statement_type,VIEW
+sys,innodb_buffer_stats_by_schema,VIEW
+sys,innodb_buffer_stats_by_table,VIEW
+sys,innodb_lock_waits,VIEW
+sys,io_by_thread_by_latency,VIEW
+sys,io_global_by_file_by_bytes,VIEW
+sys,io_global_by_file_by_latency,VIEW
+sys,io_global_by_wait_by_bytes,VIEW
+sys,io_global_by_wait_by_latency,VIEW
+sys,latest_file_io,VIEW
+sys,memory_by_host_by_current_bytes,VIEW
+sys,memory_by_thread_by_current_bytes,VIEW
+sys,memory_by_user_by_current_bytes,VIEW
+sys,memory_global_by_current_bytes,VIEW
+sys,memory_global_total,VIEW
+sys,metrics,VIEW
+sys,processlist,VIEW
+sys,ps_check_lost_instrumentation,VIEW
+sys,schema_auto_increment_columns,VIEW
+sys,schema_index_statistics,VIEW
+sys,schema_object_overview,VIEW
+sys,schema_redundant_indexes,VIEW
+sys,schema_table_lock_waits,VIEW
+sys,schema_table_statistics,VIEW
+sys,schema_table_statistics_with_buffer,VIEW
+sys,schema_tables_with_full_table_scans,VIEW
+sys,schema_unused_indexes,VIEW
+sys,session,VIEW
+sys,session_ssl_status,VIEW
+sys,statement_analysis,VIEW
+sys,statements_with_errors_or_warnings,VIEW
+sys,statements_with_full_table_scans,VIEW
+sys,statements_with_runtimes_in_95th_percentile,VIEW
+sys,statements_with_sorting,VIEW
+sys,statements_with_temp_tables,VIEW
+sys,user_summary,VIEW
+sys,user_summary_by_file_io,VIEW
+sys,user_summary_by_file_io_type,VIEW
+sys,user_summary_by_stages,VIEW
+sys,user_summary_by_statement_latency,VIEW
+sys,user_summary_by_statement_type,VIEW
+sys,version,VIEW
+sys,wait_classes_global_by_avg_latency,VIEW
+sys,wait_classes_global_by_latency,VIEW
+sys,waits_by_host_by_latency,VIEW
+sys,waits_by_user_by_latency,VIEW
+sys,waits_global_by_latency,VIEW
+sys,x$host_summary,VIEW
+sys,x$host_summary_by_file_io,VIEW
+sys,x$host_summary_by_file_io_type,VIEW
+sys,x$host_summary_by_stages,VIEW
+sys,x$host_summary_by_statement_latency,VIEW
+sys,x$host_summary_by_statement_type,VIEW
+sys,x$innodb_buffer_stats_by_schema,VIEW
+sys,x$innodb_buffer_stats_by_table,VIEW
+sys,x$innodb_lock_waits,VIEW
+sys,x$io_by_thread_by_latency,VIEW
+sys,x$io_global_by_file_by_bytes,VIEW
+sys,x$io_global_by_file_by_latency,VIEW
+sys,x$io_global_by_wait_by_bytes,VIEW
+sys,x$io_global_by_wait_by_latency,VIEW
+sys,x$latest_file_io,VIEW
+sys,x$memory_by_host_by_current_bytes,VIEW
+sys,x$memory_by_thread_by_current_bytes,VIEW
+sys,x$memory_by_user_by_current_bytes,VIEW
+sys,x$memory_global_by_current_bytes,VIEW
+sys,x$memory_global_total,VIEW
+sys,x$processlist,VIEW
+sys,x$ps_digest_95th_percentile_by_avg_us,VIEW
+sys,x$ps_digest_avg_latency_distribution,VIEW
+sys,x$ps_schema_table_statistics_io,VIEW
+sys,x$schema_flattened_keys,VIEW
+sys,x$schema_index_statistics,VIEW
+sys,x$schema_table_lock_waits,VIEW
+sys,x$schema_table_statistics,VIEW
+sys,x$schema_table_statistics_with_buffer,VIEW
+sys,x$schema_tables_with_full_table_scans,VIEW
+sys,x$session,VIEW
+sys,x$statement_analysis,VIEW
+sys,x$statements_with_errors_or_warnings,VIEW
+sys,x$statements_with_full_table_scans,VIEW
+sys,x$statements_with_runtimes_in_95th_percentile,VIEW
+sys,x$statements_with_sorting,VIEW
+sys,x$statements_with_temp_tables,VIEW
+sys,x$user_summary,VIEW
+sys,x$user_summary_by_file_io,VIEW
+sys,x$user_summary_by_file_io_type,VIEW
+sys,x$user_summary_by_stages,VIEW
+sys,x$user_summary_by_statement_latency,VIEW
+sys,x$user_summary_by_statement_type,VIEW
+sys,x$wait_classes_global_by_avg_latency,VIEW
+sys,x$wait_classes_global_by_latency,VIEW
+sys,x$waits_by_host_by_latency,VIEW
+sys,x$waits_by_user_by_latency,VIEW
+sys,x$waits_global_by_latency,VIEW

@@ -1,0 +1,9 @@
+child_table,child_column,parent_table,parent_column
+customers,salesRepEmployeeNumber,employees,employeeNumber
+employees,reportsTo,employees,employeeNumber
+employees,officeCode,offices,officeCode
+orderdetails,orderNumber,orders,orderNumber
+orderdetails,productCode,products,productCode
+orders,customerNumber,customers,customerNumber
+payments,customerNumber,customers,customerNumber
+products,productLine,productlines,productLine

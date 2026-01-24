@@ -1,0 +1,30 @@
+TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE
+information_schema,USER_ATTRIBUTES,SYSTEM VIEW
+information_schema,USER_PRIVILEGES,SYSTEM VIEW
+mysql,user,BASE TABLE
+performance_schema,events_errors_summary_by_user_by_error,BASE TABLE
+performance_schema,events_stages_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_statements_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_transactions_summary_by_user_by_event_name,BASE TABLE
+performance_schema,events_waits_summary_by_user_by_event_name,BASE TABLE
+performance_schema,memory_summary_by_user_by_event_name,BASE TABLE
+performance_schema,status_by_user,BASE TABLE
+performance_schema,user_defined_functions,BASE TABLE
+performance_schema,user_variables_by_thread,BASE TABLE
+performance_schema,users,BASE TABLE
+sys,memory_by_user_by_current_bytes,VIEW
+sys,user_summary,VIEW
+sys,user_summary_by_file_io,VIEW
+sys,user_summary_by_file_io_type,VIEW
+sys,user_summary_by_stages,VIEW
+sys,user_summary_by_statement_latency,VIEW
+sys,user_summary_by_statement_type,VIEW
+sys,waits_by_user_by_latency,VIEW
+sys,x$memory_by_user_by_current_bytes,VIEW
+sys,x$user_summary,VIEW
+sys,x$user_summary_by_file_io,VIEW
+sys,x$user_summary_by_file_io_type,VIEW
+sys,x$user_summary_by_stages,VIEW
+sys,x$user_summary_by_statement_latency,VIEW
+sys,x$user_summary_by_statement_type,VIEW
+sys,x$waits_by_user_by_latency,VIEW

@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,ENGINE,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
+classicmodels,customers,BASE TABLE,InnoDB,0,2026-01-23 09:31:47,
+classicmodels,employees,BASE TABLE,InnoDB,23,2026-01-23 09:31:47,
+classicmodels,offices,BASE TABLE,InnoDB,7,2026-01-23 09:31:47,
+classicmodels,orderdetails,BASE TABLE,InnoDB,0,2026-01-23 09:31:47,
+classicmodels,orders,BASE TABLE,InnoDB,0,2026-01-23 09:31:47,
+classicmodels,payments,BASE TABLE,InnoDB,0,2026-01-23 09:31:47,
+classicmodels,productlines,BASE TABLE,InnoDB,5,2026-01-23 09:31:47,
+classicmodels,products,BASE TABLE,InnoDB,110,2026-01-23 09:31:47,
