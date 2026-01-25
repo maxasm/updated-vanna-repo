@@ -1,11 +1,29 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import DatabaseView from './DatabaseView';
 import ToolUsageView from './ToolUsageView';
 import MemoryView from './MemoryView';
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('overview');
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        // Extract active tab from URL hash
+        const hash = window.location.hash.slice(1); // Remove # 
+        if (hash && ['overview', 'memory', 'tools', 'database'].includes(hash)) {
+            setActiveTab(hash);
+        }
+    }, []);
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        // Update URL with hash to maintain IP address
+        const newUrl = `${window.location.origin}${window.location.pathname}#${tab}`;
+        window.history.pushState({}, '', newUrl);
+    };
 
     const renderContent = () => {
         switch (activeTab) {
@@ -24,17 +42,17 @@ export default function Dashboard() {
                             <DashboardCard
                                 title="Agent Memory"
                                 description="View what's stored in ChromaDB (Agent Memory)."
-                                onClick={() => setActiveTab('memory')}
+                                onClick={() => handleTabChange('memory')}
                             />
                             <DashboardCard
                                 title="Tool Usage"
                                 description="Monitor tool usage frequency and success rates."
-                                onClick={() => setActiveTab('tools')}
+                                onClick={() => handleTabChange('tools')}
                             />
                             <DashboardCard
                                 title="Database Tables"
                                 description="See tables in the connected database."
-                                onClick={() => setActiveTab('database')}
+                                onClick={() => handleTabChange('database')}
                             />
                         </div>
                     </div>
@@ -48,15 +66,15 @@ export default function Dashboard() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between items-center">
                         <div className="flex items-center">
-                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent cursor-pointer" onClick={() => setActiveTab('overview')}>
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent cursor-pointer" onClick={() => handleTabChange('overview')}>
                                 Vanna AI Dashboard
                             </h1>
                         </div>
                         <div className="hidden sm:flex sm:space-x-8">
-                            <NavBarItem label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                            <NavBarItem label="Memory" active={activeTab === 'memory'} onClick={() => setActiveTab('memory')} />
-                            <NavBarItem label="Tools" active={activeTab === 'tools'} onClick={() => setActiveTab('tools')} />
-                            <NavBarItem label="Database" active={activeTab === 'database'} onClick={() => setActiveTab('database')} />
+                            <NavBarItem label="Overview" active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} />
+                            <NavBarItem label="Memory" active={activeTab === 'memory'} onClick={() => handleTabChange('memory')} />
+                            <NavBarItem label="Tools" active={activeTab === 'tools'} onClick={() => handleTabChange('tools')} />
+                            <NavBarItem label="Database" active={activeTab === 'database'} onClick={() => handleTabChange('database')} />
                             <NavBarItem label="Vanna Web UI" active={false} onClick={() => window.open(`//${window.location.hostname}:8001`, '_blank')} />
                         </div>
                     </div>
