@@ -1,0 +1,27 @@
+services:
+  python-app:
+    build: .
+    container_name: vanna-ai-app
+    ports:
+      - "8001:8001"
+    volumes:
+      - vanna_data:/app
+    # No env_file needed; Portainer UI handles this
+    environment:
+      - PORT=8001
+      - PYTHONUNBUFFERED=1
+      # We define the names here; Portainer fills the values
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_PROJECT=${OPENAI_API_PROJECT}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - MYSQL_DO_HOST=${MYSQL_DO_HOST}
+      - MYSQL_DO_PORT=${MYSQL_DO_PORT}
+      - MYSQL_DO_DATABASE=${MYSQL_DO_DATABASE}
+      - MYSQL_DO_USER=${MYSQL_DO_USER}
+      - MYSQL_DO_PASSWORD=${MYSQL_DO_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    restart: always
+
+volumes:
+  vanna_data:
+    driver: local
