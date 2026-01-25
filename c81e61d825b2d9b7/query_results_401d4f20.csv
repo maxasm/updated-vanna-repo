@@ -1,0 +1,9 @@
+TABLE_NAME,CREATE_TIME,TABLE_COLLATION
+customers,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+employees,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+offices,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+orderdetails,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+orders,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+payments,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+productlines,2026-01-23 09:31:47,utf8mb4_0900_ai_ci
+products,2026-01-23 09:31:47,utf8mb4_0900_ai_ci

@@ -1,0 +1,10 @@
+COLUMN_NAME,DATA_TYPE,IS_NULLABLE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,ORDINAL_POSITION
+productCode,varchar,NO,15.0,,,1
+productName,varchar,NO,70.0,,,2
+productLine,varchar,NO,50.0,,,3
+productScale,varchar,NO,10.0,,,4
+productVendor,varchar,NO,50.0,,,5
+productDescription,text,NO,65535.0,,,6
+quantityInStock,smallint,NO,,5.0,0.0,7
+buyPrice,decimal,NO,,10.0,2.0,8
+MSRP,decimal,NO,,10.0,2.0,9

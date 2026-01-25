@@ -1,0 +1,9 @@
+TABLE_NAME,pk_columns
+customers,1
+employees,1
+offices,1
+orderdetails,2
+orders,1
+payments,2
+productlines,1
+products,1

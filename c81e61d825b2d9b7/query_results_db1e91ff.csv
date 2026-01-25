@@ -1,0 +1,9 @@
+TABLE_SCHEMA,TABLE_NAME,has_primary_key
+classicmodels,customers,1
+classicmodels,employees,1
+classicmodels,offices,1
+classicmodels,orderdetails,1
+classicmodels,orders,1
+classicmodels,payments,1
+classicmodels,productlines,1
+classicmodels,products,1

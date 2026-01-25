@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vanna Chart Verification</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #chart { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 20px; }
+        #status { padding: 10px; background: #f0f0f0; margin-bottom: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Vanna API Chart Verification</h1>
+    
+    <div id="status">Ready</div>
+    
+    <div>
+        <label>Question: <input type="text" id="question" value="Show me the top 5 tables by row count" style="width: 300px;"></label>
+        <button onclick="sendQuery()">Send Query</button>
+    </div>
+
+    <div id="chart"></div>
+    <pre id="debug"></pre>
+
+    <script>
+        async function sendQuery() {
+            const question = document.getElementById('question').value;
+            const statusDiv = document.getElementById('status');
+            const chartDiv = document.getElementById('chart');
+            const debugDiv = document.getElementById('debug');
+            
+            statusDiv.textContent = "Sending query...";
+            statusDiv.className = "";
+            chartDiv.innerHTML = "";
+            debugDiv.textContent = "";
+            
+            try {
+                const response = await fetch('http://localhost:8001/api/v1/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-user-id': 'verify_user'
+                    },
+                    body: JSON.stringify({
+                        message: question,
+                        metadata: { source: 'verification_page' }
+                    })
+                });
+                
+                const data = await response.json();
+                debugDiv.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.chart) {
+                    statusDiv.innerHTML = "<span class='success'>Success! Chart data received.</span>";
+                    Plotly.newPlot('chart', data.chart.data, data.chart.layout);
+                } else {
+                    statusDiv.innerHTML = "<span class='error'>No chart data received. Check console/debug.</span>";
+                }
+                
+            } catch (e) {
+                statusDiv.innerHTML = `<span class='error'>Error: ${e.message}</span>`;
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>

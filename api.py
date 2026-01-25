@@ -19,12 +19,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import pandas as pd
+import plotly
+import plotly.express as px
+import plotly.io as pio
 
 # Vanna 2.x Imports
 from vanna.integrations.openai import OpenAILlmService
 from vanna.integrations.chromadb import ChromaAgentMemory
 from vanna.integrations.mysql import MySQLRunner
-from vanna.tools import RunSqlTool
+from vanna.tools import RunSqlTool, PlotlyChartGenerator
 from vanna.core.registry import ToolRegistry
 from vanna.core.user import UserResolver, User, RequestContext
 from vanna.core.tool.models import ToolContext
@@ -49,7 +52,7 @@ load_dotenv()
 class APIUserResolver(UserResolver):
     async def resolve_user(self, request_context: RequestContext) -> User:
         # Extract user from request headers or use default
-        user_id = request_context.headers.get('x-user-id', 'api_user')
+        user_id = request_context.headers.get('x-user-id') or request_context.headers.get('x-user-identifier') or 'api_user'
         username = request_context.headers.get('x-username', 'api_user')
         groups = request_context.headers.get('x-user-groups', 'api_users').split(',')
         return User(id=user_id, username=username, group_memberships=groups)
@@ -132,138 +135,157 @@ class CSVResultManager:
             return f"/static/{filename}"
 
 # --- 8. CONVERSATION STORE AND FILTERS ---
+
+def _normalize_session_identifier(value: Optional[str]) -> Optional[str]:
+    """Normalize user/conversation identifiers to avoid accidental None/empty mixing."""
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
 class ConversationStore:
-    """Stores and manages conversation history"""
-    
-    def __init__(self, agent_memory: ChromaAgentMemory, max_history: int = 10):
-        self.memory = agent_memory
+    """Stores and manages conversation history.
+
+    IMPORTANT: We keep conversation context isolated per (user_identifier, conversation_id)
+    combination, mirroring the "user isolation" principle shown in Vanna's placeholder/auth docs.
+
+    We intentionally do NOT use ChromaAgentMemory for conversation history because the
+    `save_text_memory` API in this repo's Vanna version does not support user/conversation
+    metadata filtering at the storage layer.
+    """
+
+    def __init__(self, max_history: int = 50):
         self.max_history = max_history
-        # Conversation ID will be generated per request based on user
-    
-    def _create_tool_context(self, user_id: str = "api_user", username: str = "api_user", 
-                           conversation_id: str = None) -> ToolContext:
-        """Create a ToolContext for memory operations"""
-        if conversation_id is None:
-            conversation_id = f"conversation_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        return ToolContext(
-            user=User(id=user_id, username=username, group_memberships=["api_users"]),
-            conversation_id=conversation_id,
-            request_id=f"req_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}",
-            agent_memory=self.memory
-        )
-    
-    async def save_conversation_turn(self, question: str, response: str, 
-                                   user_id: str = "api_user", username: str = "api_user",
-                                   conversation_id: str = None, metadata: Optional[Dict] = None):
-        """Save a conversation turn (question + response) to memory"""
+        # key: (user_identifier, conversation_id) -> list of turns
+        self._history: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
+        self._lock = asyncio.Lock()
+
+    def _scope_key(self, user_identifier: Optional[str], conversation_id: Optional[str]) -> tuple[str, str]:
+        user_identifier = _normalize_session_identifier(user_identifier) or "anonymous"
+        conversation_id = _normalize_session_identifier(conversation_id) or "default"
+        return (user_identifier, conversation_id)
+
+    async def save_conversation_turn(
+        self,
+        question: str,
+        response: str,
+        *,
+        user_identifier: Optional[str],
+        username: Optional[str],
+        conversation_id: Optional[str],
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
         if metadata is None:
             metadata = {}
-        
-        if conversation_id is None:
-            conversation_id = f"conversation_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Create conversation memory object with metadata embedded
-        conversation_memory = {
-            "conversation_id": conversation_id,
-            "user_id": user_id,
-            "username": username,
+
+        scope = self._scope_key(user_identifier, conversation_id)
+        record = {
+            "conversation_id": scope[1],
+            "user_id": scope[0],
+            "username": username or scope[0],
             "timestamp": datetime.now().isoformat(),
             "question": question,
             "response": response,
             "type": "conversation",
-            "metadata": metadata
+            "metadata": metadata,
         }
-        
-        # Save to memory - embed metadata in the content since save_text_memory doesn't accept metadata parameter
-        memory_content = json.dumps(conversation_memory)
-        context = self._create_tool_context(user_id, username, conversation_id)
-        await self.memory.save_text_memory(
-            content=memory_content,
-            context=context
+
+        async with self._lock:
+            turns = self._history.setdefault(scope, [])
+            turns.append(record)
+            # cap per-scope history
+            if len(turns) > self.max_history:
+                self._history[scope] = turns[-self.max_history :]
+
+    async def get_recent_conversations(
+        self,
+        *,
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Get recent conversation history.
+
+        If both user_identifier and conversation_id are provided, returns that exact scope.
+        If only user_identifier is provided, returns recent across all that user's conversations.
+        If neither is provided, returns recent across all users/conversations.
+        """
+        user_identifier = _normalize_session_identifier(user_identifier)
+        conversation_id = _normalize_session_identifier(conversation_id)
+
+        async with self._lock:
+            all_turns: List[Dict[str, Any]] = []
+
+            for (uid, cid), turns in self._history.items():
+                if user_identifier is not None and uid != user_identifier:
+                    continue
+                if conversation_id is not None and cid != conversation_id:
+                    continue
+                all_turns.extend(turns)
+
+            all_turns.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            return all_turns[:limit]
+
+    async def get_filtered_conversations(
+        self,
+        *,
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        filter_keywords: Optional[List[str]] = None,
+        filter_metadata: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        recent = await self.get_recent_conversations(
+            user_identifier=user_identifier, conversation_id=conversation_id, limit=limit * 50
         )
-    
-    async def get_recent_conversations(self, user_id: str = None, limit: int = 5) -> List[Dict[str, Any]]:
-        """Get recent conversation history for a user (or all users if user_id is None)"""
-        context = self._create_tool_context()
-        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=limit * 2)  # Get more to filter
-        
-        conversations = []
-        for memory_item in recent_memories:
-            try:
-                # Parse the JSON content
-                conversation_data = json.loads(memory_item.content)
-                # Check if it's a conversation memory (has type field)
-                if conversation_data.get('type') == 'conversation':
-                    # Filter by user_id if specified
-                    if user_id is None or conversation_data.get('user_id') == user_id:
-                        conversations.append(conversation_data)
-            except (json.JSONDecodeError, AttributeError, KeyError):
-                continue
-        
-        # Return most recent conversations, up to limit
-        return conversations[:limit]
-    
-    async def get_filtered_conversations(self, user_id: str = None, 
-                                         filter_keywords: List[str] = None, 
-                                         filter_metadata: Dict[str, Any] = None,
-                                         limit: int = 5) -> List[Dict[str, Any]]:
-        """Get conversations filtered by user, keywords or metadata"""
-        context = self._create_tool_context()
-        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=limit * 10)  # Get more to filter
-        
-        filtered_conversations = []
-        for memory_item in recent_memories:
-            try:
-                conversation_data = json.loads(memory_item.content)
-                # Check if it's a conversation memory
-                if conversation_data.get('type') != 'conversation':
+
+        filtered: List[Dict[str, Any]] = []
+        for conv in recent:
+            if filter_keywords:
+                text_to_search = f"{conv.get('question', '')} {conv.get('response', '')}".lower()
+                if not any(k.lower() in text_to_search for k in filter_keywords):
                     continue
-                
-                # Filter by user_id if specified
-                if user_id is not None and conversation_data.get('user_id') != user_id:
+
+            if filter_metadata:
+                conv_metadata = conv.get("metadata", {}) or {}
+                if not all(conv_metadata.get(k) == v for k, v in filter_metadata.items()):
                     continue
-                    
-                # Apply keyword filter
-                if filter_keywords:
-                    text_to_search = f"{conversation_data.get('question', '')} {conversation_data.get('response', '')}".lower()
-                    if not any(keyword.lower() in text_to_search for keyword in filter_keywords):
-                        continue
-                
-                # Apply metadata filter (now metadata is inside conversation_data)
-                if filter_metadata:
-                    conv_metadata = conversation_data.get('metadata', {})
-                    if not all(conv_metadata.get(key) == value for key, value in filter_metadata.items()):
-                        continue
-                
-                filtered_conversations.append(conversation_data)
-            except (json.JSONDecodeError, AttributeError, KeyError):
-                continue
-        
-        return filtered_conversations[:limit]
-    
-    async def clear_conversation_history(self, user_id: str = None):
-        """Clear all conversation history (for testing/debugging)"""
-        context = self._create_tool_context()
-        recent_memories = await self.memory.get_recent_text_memories(context=context, limit=1000)
-        for memory_item in recent_memories:
-            try:
-                conversation_data = json.loads(memory_item.content)
-                if conversation_data.get('type') == 'conversation':
-                    # Filter by user_id if specified
-                    if user_id is None or conversation_data.get('user_id') == user_id:
-                        if hasattr(memory_item, 'memory_id'):
-                            # Try to delete the memory by ID with context
-                            try:
-                                await self.memory.delete_by_id(
-                                    memory_id=memory_item.memory_id,
-                                    context=context
-                                )
-                            except TypeError:
-                                # If that fails, try without context
-                                await self.memory.delete_by_id(memory_id=memory_item.memory_id)
-            except (json.JSONDecodeError, AttributeError, KeyError):
-                continue
+
+            filtered.append(conv)
+
+        return filtered[:limit]
+
+    async def clear_conversation_history(
+        self,
+        *,
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+    ):
+        """Clear conversation history.
+
+        - If both are provided: clears that exact (user, conversation).
+        - If only user provided: clears all conversations for that user.
+        - If neither: clears everything.
+        """
+        user_identifier = _normalize_session_identifier(user_identifier)
+        conversation_id = _normalize_session_identifier(conversation_id)
+
+        async with self._lock:
+            if user_identifier is None and conversation_id is None:
+                self._history.clear()
+                return
+
+            keys_to_delete = []
+            for (uid, cid) in self._history.keys():
+                if user_identifier is not None and uid != user_identifier:
+                    continue
+                if conversation_id is not None and cid != conversation_id:
+                    continue
+                keys_to_delete.append((uid, cid))
+
+            for k in keys_to_delete:
+                self._history.pop(k, None)
 
 class ConversationContextEnhancer:
     """Enhances questions with conversation context"""
@@ -271,10 +293,19 @@ class ConversationContextEnhancer:
     def __init__(self, conversation_store: ConversationStore):
         self.store = conversation_store
     
-    async def enhance_question_with_context(self, question: str, user_id: str = None) -> str:
-        """Enhance the question with relevant conversation history for a user"""
-        # Get recent conversations for the user
-        recent_conversations = await self.store.get_recent_conversations(user_id=user_id, limit=3)
+    async def enhance_question_with_context(
+        self,
+        question: str,
+        *,
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+    ) -> str:
+        """Enhance the question with relevant conversation history for a (user, conversation) scope."""
+        recent_conversations = await self.store.get_recent_conversations(
+            user_identifier=user_identifier,
+            conversation_id=conversation_id,
+            limit=3,
+        )
         
         if not recent_conversations:
             return question
@@ -289,7 +320,8 @@ class ConversationContextEnhancer:
         question_keywords = self._extract_keywords(question)
         if question_keywords:
             filtered_conversations = await self.store.get_filtered_conversations(
-                user_id=user_id,
+                user_identifier=user_identifier,
+                conversation_id=conversation_id,
                 filter_keywords=question_keywords,
                 limit=2
             )
@@ -329,6 +361,7 @@ class EnhancedChatHandler:
         self.sql_runner = sql_runner
         self.conversation_store = conversation_store
         self.conversation_enhancer = conversation_enhancer
+        self.chart_generator = PlotlyChartGenerator()
         self.base_chat_handler = None  # Will be set after VannaFastAPIServer creation
     
     async def handle_chat_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
@@ -340,15 +373,30 @@ class EnhancedChatHandler:
                 raise HTTPException(status_code=400, detail="Message is required")
             
             headers = request.get("headers", {})
-            user_id = headers.get('x-user-id', 'api_user')
-            username = headers.get('x-username', 'api_user')
+            # NOTE: these are expected to be sourced from the PHP session by the caller.
+            user_identifier = (
+                headers.get("x-user-id")
+                or headers.get("x-user-identifier")
+                or request.get("user_identifier")
+                or request.get("user_id")
+                or "api_user"
+            )
+            conversation_id = (
+                headers.get("x-conversation-id")
+                or headers.get("x-conversation")
+                or request.get("conversation_id")
+                or (request.get("metadata") or {}).get("conversation_id")
+            )
+            username = headers.get("x-username") or str(user_identifier)
             
             # First enhance with learned patterns
             learned_enhanced_question = self.learning_manager.enhance_question_with_learned_patterns(message)
             
             # Then enhance with conversation context
             enhanced_question = await self.conversation_enhancer.enhance_question_with_context(
-                learned_enhanced_question, user_id=user_id
+                learned_enhanced_question,
+                user_identifier=user_identifier,
+                conversation_id=conversation_id,
             )
             
             # Create request context
@@ -364,6 +412,8 @@ class EnhancedChatHandler:
             response_text = ""
             sql_query = ""
             csv_path = None
+            chart_json = None
+            chart_code = ""
             tool_used = False
             tool_success = False
             
@@ -371,7 +421,8 @@ class EnhancedChatHandler:
             components = []
             async for component in self.agent.send_message(
                 request_context=request_context,
-                message=enhanced_question
+                message=enhanced_question,
+                conversation_id=conversation_id,
             ):
                 components.append(component)
                 # Collect response text
@@ -417,7 +468,7 @@ class EnhancedChatHandler:
                                 "csv_file": csv_path,
                                 "response_preview": response_text[:100],
                                 "sql_extracted": True,
-                                "user_id": user_id,
+                                "user_id": user_identifier,
                                 "username": username
                             }
                         )
@@ -429,7 +480,7 @@ class EnhancedChatHandler:
                             tool_name="run_sql",
                             args={"sql": sql_query},
                             success=True,  # CSV was generated, so it's a success
-                            metadata={"csv_file": csv_path, "error": str(e), "user_id": user_id}
+                            metadata={"csv_file": csv_path, "error": str(e), "user_id": user_identifier}
                         )
                 else:
                     # CSV was generated but we don't have SQL; try to extract SQL from response text
@@ -444,7 +495,7 @@ class EnhancedChatHandler:
                                 "csv_file": csv_path,
                                 "response_preview": response_text[:100],
                                 "sql_extracted_from_text": True,
-                                "user_id": user_id
+                                "user_id": user_identifier,
                             }
                         )
                     else:
@@ -454,7 +505,7 @@ class EnhancedChatHandler:
                             tool_name="agent_execution",
                             args={"message": message},
                             success=True,
-                            metadata={"csv_file": csv_path, "sql_not_found": True, "user_id": user_id}
+                            metadata={"csv_file": csv_path, "sql_not_found": True, "user_id": user_identifier}
                         )
             
             # If no CSV was generated but we have SQL, try to execute it
@@ -467,10 +518,10 @@ class EnhancedChatHandler:
                         query_hash = hashlib.md5(sql_query.encode()).hexdigest()
                         
                         # Save results to CSV
+                        # Save results to CSV (in case it wasn't saved by the agent)
                         csv_path = self.csv_manager.save_query_results(df, query_hash)
-                        tool_success = True
                         
-                        # Record successful tool usage
+                        # Record successful tool usage (CSV exists either way)
                         await self.learning_manager.record_tool_usage(
                             question=message,
                             tool_name="run_sql",
@@ -480,9 +531,39 @@ class EnhancedChatHandler:
                                 "csv_file": csv_path,
                                 "response_preview": response_text[:100],
                                 "sql_extracted": True,
-                                "user_id": user_id
+                                "user_id": user_identifier,
+                                "username": username
                             }
                         )
+                        
+                        tool_success = True
+                        
+
+                        
+                        # Generate Chart if configured and we have results
+                        try:
+                            # Generate Plotly chart using the generator
+                            # It automatically determines the best chart type based on the dataframe
+                            chart_dict = self.chart_generator.generate_chart(df=df)
+                            
+                            if chart_dict:
+                                chart_json = chart_dict
+                                logger.info("Chart generated successfully")
+                                
+                                # Record successful chart generation
+                                await self.learning_manager.record_tool_usage(
+                                    question=message,
+                                    tool_name="generate_chart",
+                                    args={"sql": sql_query},
+                                    success=True,
+                                    metadata={
+                                        "chart_generated": True,
+                                        "user_id": user_identifier
+                                    }
+                                )
+                        except Exception as e:
+                            logger.error(f"Error generating chart: {e}")
+                            # Don't fail the request if chart generation fails
                 except Exception as e:
                     logger.error(f"Error executing SQL: {sql_query[:100]}...: {e}")
                     # Record failure
@@ -491,34 +572,37 @@ class EnhancedChatHandler:
                         tool_name="run_sql",
                         args={"sql": sql_query},
                         success=False,
-                        metadata={"error": str(e), "user_id": user_id}
+                        metadata={"error": str(e), "user_id": user_identifier}
                     )
             
-            # Save conversation to history
-            if response_text:
-                await self.conversation_store.save_conversation_turn(
-                    question=message,
-                    response=response_text,
-                    user_id=user_id,
-                    username=username,
-                    metadata={
-                        "enhanced_question": enhanced_question[:200] + "..." if len(enhanced_question) > 200 else enhanced_question,
-                        "learned_enhanced": learned_enhanced_question[:200] + "..." if len(learned_enhanced_question) > 200 else learned_enhanced_question,
-                        "sql_query": sql_query,
-                        "csv_generated": bool(csv_path),
-                        "tool_success": tool_success
-                    }
-                )
+            # Save conversation to history (always, even if the agent produced an empty answer)
+            await self.conversation_store.save_conversation_turn(
+                question=message,
+                response=response_text,
+                user_identifier=user_identifier,
+                username=username,
+                conversation_id=conversation_id,
+                metadata={
+                    "enhanced_question": enhanced_question[:200] + "..." if len(enhanced_question) > 200 else enhanced_question,
+                    "learned_enhanced": learned_enhanced_question[:200] + "..." if len(learned_enhanced_question) > 200 else learned_enhanced_question,
+                    "sql_query": sql_query,
+                    "csv_generated": bool(csv_path),
+                    "chart_generated": bool(chart_json),
+                    "tool_success": tool_success,
+                },
+            )
             
             # Prepare response
             response_data = {
                 "answer": response_text.strip(),
                 "sql": sql_query,
                 "csv_url": self.csv_manager.get_csv_url(csv_path) if csv_path else None,
+                "chart": chart_json,
                 "success": tool_success,
                 "timestamp": datetime.now().isoformat(),
                 "tool_used": tool_used,
-                "user_id": user_id,
+                "user_id": user_identifier,
+                "conversation_id": conversation_id,
                 "username": username
             }
             
@@ -563,7 +647,7 @@ def create_app() -> FastAPI:
     
     # Initialize managers
     csv_manager = CSVResultManager()
-    conversation_store = ConversationStore(agent_memory=memory)
+    conversation_store = ConversationStore()
     conversation_enhancer = ConversationContextEnhancer(conversation_store=conversation_store)
     
     enhanced_handler = EnhancedChatHandler(
@@ -695,14 +779,32 @@ def create_app() -> FastAPI:
             if not message:
                 raise HTTPException(status_code=400, detail="Message is required")
             
+            headers = request_data.get("headers", {})
+            user_identifier = (
+                headers.get("x-user-id")
+                or headers.get("x-user-identifier")
+                or request_data.get("user_identifier")
+                or request_data.get("user_id")
+                or "api_user"
+            )
+            conversation_id = (
+                headers.get("x-conversation-id")
+                or headers.get("x-conversation")
+                or request_data.get("conversation_id")
+                or (request_data.get("metadata") or {}).get("conversation_id")
+            )
+
             # Create request context
             request_context = RequestContext(
-                headers=request_data.get("headers", {}),
+                headers=headers,
                 metadata=request_data.get("metadata", {})
             )
             
-            # Enhance question with learned patterns
-            enhanced_question = learning_manager.enhance_question_with_learned_patterns(message)
+            # Enhance question with learned patterns + conversation context
+            learned = learning_manager.enhance_question_with_learned_patterns(message)
+            enhanced_question = await app.state.conversation_enhancer.enhance_question_with_context(
+                learned, user_identifier=user_identifier, conversation_id=conversation_id
+            )
             
             async def event_stream():
                 """Generate Server-Sent Events"""
@@ -716,7 +818,8 @@ def create_app() -> FastAPI:
                     # Stream agent response
                     async for component in agent.send_message(
                         request_context=request_context,
-                        message=enhanced_question
+                        message=enhanced_question,
+                        conversation_id=conversation_id,
                     ):
                         if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
                             text = component.simple_component.text
@@ -748,6 +851,20 @@ def create_app() -> FastAPI:
                     
                     # Send completion event
                     yield f"data: {json.dumps({'event': 'complete', 'answer': response_text, 'sql': sql_query, 'csv_url': csv_manager.get_csv_url(csv_path) if csv_path else None})}\n\n"
+
+                    # Store conversation after completion (scoped by user + conversation)
+                    await app.state.conversation_store.save_conversation_turn(
+                        question=message,
+                        response=response_text,
+                        user_identifier=user_identifier,
+                        username=headers.get("x-username") or str(user_identifier),
+                        conversation_id=conversation_id,
+                        metadata={
+                            "sse": True,
+                            "sql_query": sql_query,
+                            "csv_generated": bool(csv_path),
+                        },
+                    )
                     
                 except Exception as e:
                     logger.error(f"Error in SSE stream: {e}")
@@ -782,14 +899,32 @@ def create_app() -> FastAPI:
                     await websocket.send_json({"error": "Message is required"})
                     continue
                 
+                headers = data.get("headers", {})
+                user_identifier = (
+                    headers.get("x-user-id")
+                    or headers.get("x-user-identifier")
+                    or data.get("user_identifier")
+                    or data.get("user_id")
+                    or "api_user"
+                )
+                conversation_id = (
+                    headers.get("x-conversation-id")
+                    or headers.get("x-conversation")
+                    or data.get("conversation_id")
+                    or (data.get("metadata") or {}).get("conversation_id")
+                )
+
                 # Create request context
                 request_context = RequestContext(
-                    headers=data.get("headers", {}),
+                    headers=headers,
                     metadata=data.get("metadata", {})
                 )
                 
-                # Enhance question with learned patterns
-                enhanced_question = learning_manager.enhance_question_with_learned_patterns(message)
+                # Enhance question with learned patterns + conversation context
+                learned = learning_manager.enhance_question_with_learned_patterns(message)
+                enhanced_question = await app.state.conversation_enhancer.enhance_question_with_context(
+                    learned, user_identifier=user_identifier, conversation_id=conversation_id
+                )
                 
                 # Send initial acknowledgment
                 await websocket.send_json({
@@ -803,7 +938,8 @@ def create_app() -> FastAPI:
                 # Stream agent response
                 async for component in agent.send_message(
                     request_context=request_context,
-                    message=enhanced_question
+                    message=enhanced_question,
+                    conversation_id=conversation_id,
                 ):
                     if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
                         text = component.simple_component.text
@@ -854,6 +990,20 @@ def create_app() -> FastAPI:
                     "csv_url": csv_manager.get_csv_url(csv_path) if csv_path else None,
                     "timestamp": datetime.now().isoformat()
                 })
+
+                # Store conversation after completion (scoped by user + conversation)
+                await app.state.conversation_store.save_conversation_turn(
+                    question=message,
+                    response=response_text,
+                    user_identifier=user_identifier,
+                    username=headers.get("x-username") or str(user_identifier),
+                    conversation_id=conversation_id,
+                    metadata={
+                        "websocket": True,
+                        "sql_query": sql_query,
+                        "csv_generated": bool(csv_path),
+                    },
+                )
                 
         except WebSocketDisconnect:
             logger.info("WebSocket disconnected")
@@ -910,16 +1060,27 @@ def create_app() -> FastAPI:
     # --- CONVERSATION MANAGEMENT ENDPOINTS ---
     
     @app.get("/api/v1/conversation/history")
-    async def get_conversation_history(user_id: Optional[str] = None, limit: int = 10):
-        """Get conversation history for a user (or all users if user_id not provided)"""
+    async def get_conversation_history(
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        limit: int = 10,
+    ):
+        """Get conversation history.
+
+        - Provide `user_identifier` and `conversation_id` to fetch a single thread.
+        - Provide only `user_identifier` to fetch across all that user's threads.
+        - Provide neither to fetch across all users.
+        """
         try:
             conversation_store = app.state.conversation_store
             conversations = await conversation_store.get_recent_conversations(
-                user_id=user_id, 
+                user_identifier=user_identifier,
+                conversation_id=conversation_id,
                 limit=limit
             )
             return JSONResponse(content={
-                "user_id": user_id,
+                "user_identifier": user_identifier,
+                "conversation_id": conversation_id,
                 "limit": limit,
                 "count": len(conversations),
                 "conversations": conversations
@@ -930,7 +1091,8 @@ def create_app() -> FastAPI:
     
     @app.get("/api/v1/conversation/filter")
     async def filter_conversations(
-        user_id: Optional[str] = None,
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
         keyword: Optional[str] = None,
         limit: int = 10
     ):
@@ -940,13 +1102,15 @@ def create_app() -> FastAPI:
             filter_keywords = [keyword] if keyword else None
             
             conversations = await conversation_store.get_filtered_conversations(
-                user_id=user_id,
+                user_identifier=user_identifier,
+                conversation_id=conversation_id,
                 filter_keywords=filter_keywords,
                 limit=limit
             )
             
             return JSONResponse(content={
-                "user_id": user_id,
+                "user_identifier": user_identifier,
+                "conversation_id": conversation_id,
                 "keyword": keyword,
                 "limit": limit,
                 "count": len(conversations),
@@ -957,14 +1121,27 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=500, detail=str(e))
     
     @app.delete("/api/v1/conversation/clear")
-    async def clear_conversation_history(user_id: Optional[str] = None):
-        """Clear conversation history for a user (or all users if user_id not provided)"""
+    async def clear_conversation_history(
+        user_identifier: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+    ):
+        """Clear conversation history.
+
+        - Provide `user_identifier` and `conversation_id` to clear a single thread.
+        - Provide only `user_identifier` to clear all that user's threads.
+        - Provide neither to clear everything.
+        """
         try:
             conversation_store = app.state.conversation_store
-            await conversation_store.clear_conversation_history(user_id=user_id)
+            await conversation_store.clear_conversation_history(
+                user_identifier=user_identifier,
+                conversation_id=conversation_id,
+            )
             return JSONResponse(content={
                 "status": "success",
-                "message": f"Cleared conversation history for user: {user_id if user_id else 'all users'}",
+                "message": "Cleared conversation history",
+                "user_identifier": user_identifier,
+                "conversation_id": conversation_id,
                 "timestamp": datetime.now().isoformat()
             })
         except Exception as e:
@@ -1124,7 +1301,7 @@ if __name__ == "__main__":
     asyncio.run(load_patterns())
 
     host = os.getenv("HOST", "0.0.0.0")
-    # Default to 8001 to avoid clashing with the Vanna UI (commonly 8000).
+    # Default to 8001.
     port = int(os.getenv("PORT", "8001"))
 
     uvicorn.run(

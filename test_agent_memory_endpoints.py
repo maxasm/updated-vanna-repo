@@ -157,14 +157,18 @@ def test_conversation_history():
         print(f"   ✓ Created conversation entry")
     
     # Test getting conversation history for specific user
-    print(f"\n   GET {base_url}/api/v1/conversation/history?user_id=test_user_1")
-    response = requests.get(f"{base_url}/api/v1/conversation/history?user_id=test_user_1")
+    print(f"\n   GET {base_url}/api/v1/conversation/history?user_identifier=test_user_1")
+    response = requests.get(f"{base_url}/api/v1/conversation/history?user_identifier=test_user_1")
     print(f"   Status: {response.status_code}")
     
     if response.status_code == 200:
         data = response.json()
-        print(f"   Conversations for user test_user_1: {data.get('count', 0)}")
-        print(f"   ✓ Conversation history endpoint works (specific user)")
+        count = data.get('count', 0)
+        print(f"   Conversations for user test_user_1: {count}")
+        if count > 0:
+            print(f"   ✓ Conversation history endpoint works (specific user)")
+        else:
+            print(f"   ⚠️  No conversations returned (this can happen if the model produced an empty response)")
     
     # Test getting all conversation history
     print(f"\n   GET {base_url}/api/v1/conversation/history")
@@ -196,8 +200,8 @@ def test_conversation_filter():
         print(f"   ✓ Conversation filter endpoint works (keyword)")
     
     # Test filtering by user and keyword
-    print(f"\n   GET {base_url}/api/v1/conversation/filter?user_id=test_user_1&keyword=tables")
-    response = requests.get(f"{base_url}/api/v1/conversation/filter?user_id=test_user_1&keyword=tables")
+    print(f"\n   GET {base_url}/api/v1/conversation/filter?user_identifier=test_user_1&keyword=tables")
+    response = requests.get(f"{base_url}/api/v1/conversation/filter?user_identifier=test_user_1&keyword=tables")
     print(f"   Status: {response.status_code}")
     
     if response.status_code == 200:
@@ -215,8 +219,8 @@ def test_conversation_clear():
     print("\n7. Testing conversation clear endpoint:")
     
     # Test clearing for specific user
-    print(f"   DELETE {base_url}/api/v1/conversation/clear?user_id=test_user_1")
-    response = requests.delete(f"{base_url}/api/v1/conversation/clear?user_id=test_user_1")
+    print(f"   DELETE {base_url}/api/v1/conversation/clear?user_identifier=test_user_1")
+    response = requests.delete(f"{base_url}/api/v1/conversation/clear?user_identifier=test_user_1")
     print(f"   Status: {response.status_code}")
     
     if response.status_code == 200:
@@ -226,7 +230,7 @@ def test_conversation_clear():
     
     # Verify user's conversations are cleared
     print(f"\n   Verifying clearance...")
-    verify_response = requests.get(f"{base_url}/api/v1/conversation/history?user_id=test_user_1")
+    verify_response = requests.get(f"{base_url}/api/v1/conversation/history?user_identifier=test_user_1")
     if verify_response.status_code == 200:
         verify_data = verify_response.json()
         if verify_data.get('count', 0) == 0:
@@ -242,7 +246,7 @@ def test_conversation_clear():
     if response.status_code == 200:
         data = response.json()
         print(f"   Response: {json.dumps(data, indent=2)}")
-        print(f"   ✓ Conversation clear endpoint works (all users)")
+        print(f"   ✓ Conversation clear endpoint works (specific user)")
         return True
     else:
         print(f"   Error: {response.text}")
@@ -298,7 +302,7 @@ def test_chat_with_conversation_context():
         print(f"   ✓ Chat with conversation context works")
         
         # Verify conversation was saved
-        history_response = requests.get(f"{base_url}/api/v1/conversation/history?user_id=context_user")
+        history_response = requests.get(f"{base_url}/api/v1/conversation/history?user_identifier=context_user")
         if history_response.status_code == 200:
             history_data = history_response.json()
             print(f"   Conversations saved for context_user: {history_data.get('count', 0)}")
@@ -387,7 +391,7 @@ def main():
         print("  - Conversation context enhancement")
         print("  - Learning pattern enhancement")
         print("  - Automatic conversation history storage")
-        print("  - User-specific memory")
+        print("  - User+conversation scoped memory")
         
         return tests_passed == tests_total
         

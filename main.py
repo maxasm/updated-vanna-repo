@@ -19,7 +19,7 @@ def main() -> None:
     configure_logging(component="VANNA API")
 
     host = os.getenv("HOST", "0.0.0.0")
-    # Default to 8001 to avoid clashing with the Vanna UI (commonly 8000).
+    # Default to 8001.
     port = int(os.getenv("PORT", "8001"))
 
     # Use import string so uvicorn can reload if desired.

@@ -1,0 +1,3 @@
+INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,INDEX_TYPE,INDEX_COMMENT
+PRIMARY,0,1,customerNumber,BTREE,
+salesRepEmployeeNumber,1,1,salesRepEmployeeNumber,BTREE,

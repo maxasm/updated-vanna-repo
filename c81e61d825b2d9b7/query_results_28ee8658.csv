@@ -1,0 +1,14 @@
+COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_TYPE,ORDINAL_POSITION
+customerNumber,int,,10.0,0.0,NO,,int,1
+customerName,varchar,50.0,,,NO,,varchar(50),2
+contactLastName,varchar,50.0,,,NO,,varchar(50),3
+contactFirstName,varchar,50.0,,,NO,,varchar(50),4
+phone,varchar,50.0,,,NO,,varchar(50),5
+addressLine1,varchar,50.0,,,NO,,varchar(50),6
+addressLine2,varchar,50.0,,,YES,,varchar(50),7
+city,varchar,50.0,,,NO,,varchar(50),8
+state,varchar,50.0,,,YES,,varchar(50),9
+postalCode,varchar,15.0,,,YES,,varchar(15),10
+country,varchar,50.0,,,NO,,varchar(50),11
+salesRepEmployeeNumber,int,,10.0,0.0,YES,,int,12
+creditLimit,decimal,,10.0,2.0,YES,,"decimal(10,2)",13

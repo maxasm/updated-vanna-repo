@@ -1,0 +1,9 @@
+fk_table,fk_column,pk_table,pk_column
+customers,salesRepEmployeeNumber,employees,employeeNumber
+employees,officeCode,offices,officeCode
+employees,reportsTo,employees,employeeNumber
+orderdetails,orderNumber,orders,orderNumber
+orderdetails,productCode,products,productCode
+orders,customerNumber,customers,customerNumber
+payments,customerNumber,customers,customerNumber
+products,productLine,productlines,productLine

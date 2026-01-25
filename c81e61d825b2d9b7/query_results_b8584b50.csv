@@ -1,0 +1,3 @@
+INDEX_NAME,NON_UNIQUE,columns
+PRIMARY,0,customerNumber
+salesRepEmployeeNumber,1,salesRepEmployeeNumber

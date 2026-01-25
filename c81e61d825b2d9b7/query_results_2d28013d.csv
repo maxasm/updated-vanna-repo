@@ -1,0 +1,11 @@
+TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION
+customers,customerNumber,1
+employees,employeeNumber,1
+offices,officeCode,1
+orderdetails,orderNumber,1
+orderdetails,productCode,2
+orders,orderNumber,1
+payments,customerNumber,1
+payments,checkNumber,2
+productlines,productLine,1
+products,productCode,1
