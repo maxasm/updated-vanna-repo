@@ -71,11 +71,11 @@ memory = ChromaAgentMemory(
 
 # Initialize the Runner
 sql_runner = MySQLRunner(
-    host=os.getenv("MYSQL_HOST", "localhost"),
-    database=os.getenv("MYSQL_DB"),
-    user=os.getenv("MYSQL_USER"),
-    password=os.getenv("MYSQL_PASSWORD"),
-    port=int(os.getenv("MYSQL_PORT", 3306))
+    host=os.getenv("MYSQL_DO_HOST", "mysql-db"), 
+    database=os.getenv("MYSQL_DO_DATABASE"),
+    user=os.getenv("MYSQL_DO_USER"),
+    password=os.getenv("MYSQL_DO_PASSWORD"),
+    port=int(os.getenv("MYSQL_DO_PORT", 3306))
 )
 
 # --- 4. TOOL REGISTRY ---
