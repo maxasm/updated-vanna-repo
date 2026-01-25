@@ -1,4 +1,15 @@
-const API_BASE = 'http://localhost:8001/api/v1';
+// This function determines the API URL based on where you are accessing the dashboard
+const getApiBase = () => {
+    // Check if we are running in the browser
+    if (typeof window !== 'undefined') {
+        // Uses the current IP/Domain from the address bar and points to port 8001
+        return `http://${window.location.hostname}:8001/api/v1`;
+    }
+    // Fallback for Server-Side Rendering (using the Docker internal service name)
+    return 'http://vanna-api:8001/api/v1';
+};
+
+const API_BASE = getApiBase();
 
 export async function fetchStats() {
     const res = await fetch(`${API_BASE}/learning/stats`);
