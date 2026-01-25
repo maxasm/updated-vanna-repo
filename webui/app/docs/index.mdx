@@ -1,0 +1,64 @@
+---
+title: API Documentation
+description: Reference for the backend API endpoints and usage.
+---
+
+# API Documentation
+
+Welcome to the API documentation for this app.
+
+- **Backend:** Python (see endpoints below)
+- **How to use:** See each section for endpoint details, parameters, and example requests.
+
+## Endpoints
+
+### `POST /api/v1/chat`
+Chat endpoint. Accepts a message and returns:
+- SQL query
+- CSV link to results
+- Natural language answer
+
+### `GET /api/v1/learning/stats`
+Returns learning statistics.
+
+### `GET /api/v1/health`
+Health check endpoint.
+
+### `POST /api/v1/train`
+Trains the agent with schema information.
+
+### `POST /api/vanna/v2/chat_sse`
+Server-Sent Events streaming chat endpoint.
+
+### `WS /api/vanna/v2/chat_websocket`
+WebSocket real-time chat endpoint.
+
+### `POST /api/vanna/v2/chat_poll`
+Polling chat endpoint.
+
+### `GET /health`
+Root health check endpoint.
+
+### `GET /api/v1/conversation/history`
+Get conversation history.
+
+### `GET /api/v1/conversation/filter`
+Filter conversations by user and/or keyword.
+
+### `DELETE /api/v1/conversation/clear`
+Clear conversation history.
+
+### `GET /api/v1/database/tables`
+Get list of tables in the connected database.
+
+### `GET /api/v1/memory/all`
+Get contents of agent memory (ChromaDB).
+
+### `GET /api/v1/learning/detailed`
+Get detailed learning statistics with example patterns.
+
+### `GET /api/v1/learning/patterns`
+Get learning patterns with optional filtering by type.
+
+### `POST /api/v1/learning/enhance_test`
+Test learning enhancement on a sample question.

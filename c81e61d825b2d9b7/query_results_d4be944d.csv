@@ -1,0 +1,7 @@
+TABLE_NAME,foreign_keys
+customers,salesRepEmployeeNumber -> employees.employeeNumber
+employees,officeCode -> offices.officeCode; reportsTo -> employees.employeeNumber
+orderdetails,productCode -> products.productCode; orderNumber -> orders.orderNumber
+orders,customerNumber -> customers.customerNumber
+payments,customerNumber -> customers.customerNumber
+products,productLine -> productlines.productLine

@@ -27,7 +27,7 @@ import plotly.io as pio
 from vanna.integrations.openai import OpenAILlmService
 from vanna.integrations.chromadb import ChromaAgentMemory
 from vanna.integrations.mysql import MySQLRunner
-from vanna.tools import RunSqlTool, PlotlyChartGenerator
+from vanna.tools import RunSqlTool, PlotlyChartGenerator, VisualizeDataTool
 from vanna.core.registry import ToolRegistry
 from vanna.core.user import UserResolver, User, RequestContext
 from vanna.core.tool.models import ToolContext
@@ -81,7 +81,9 @@ sql_runner = MySQLRunner(
 # --- 4. TOOL REGISTRY ---
 registry = ToolRegistry()
 sql_tool = RunSqlTool(sql_runner=sql_runner)
+visualize_tool = VisualizeDataTool()
 registry.register_local_tool(sql_tool, access_groups=["api_users"])
+registry.register_local_tool(visualize_tool, access_groups=["api_users"])
 
 # --- 5. INITIALIZE AGENT ---
 agent = Agent(
@@ -155,16 +157,48 @@ class ConversationStore:
     metadata filtering at the storage layer.
     """
 
-    def __init__(self, max_history: int = 50):
+    def __init__(self, max_history: int = 50, persistence_file: str = "conversation_history.json"):
         self.max_history = max_history
+        self.persistence_file = persistence_file
         # key: (user_identifier, conversation_id) -> list of turns
         self._history: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
         self._lock = asyncio.Lock()
+        self._load_from_file()
 
     def _scope_key(self, user_identifier: Optional[str], conversation_id: Optional[str]) -> tuple[str, str]:
         user_identifier = _normalize_session_identifier(user_identifier) or "anonymous"
         conversation_id = _normalize_session_identifier(conversation_id) or "default"
         return (user_identifier, conversation_id)
+        
+    def _load_from_file(self):
+        """Load history from JSON file"""
+        try:
+            if os.path.exists(self.persistence_file):
+                with open(self.persistence_file, 'r') as f:
+                    data = json.load(f)
+                    # Convert string keys "user_id|conv_id" back to tuple keys
+                    for key_str, turns in data.items():
+                        if "|" in key_str:
+                            parts = key_str.split("|", 1)
+                            scope = (parts[0], parts[1])
+                            self._history[scope] = turns
+            logger.info(f"Loaded conversation history from {self.persistence_file}")
+        except Exception as e:
+            logger.error(f"Error loading conversation history: {e}")
+
+    def _save_to_file(self):
+        """Save history to JSON file"""
+        try:
+            # Convert tuple keys to string keys for JSON
+            data = {}
+            for scope, turns in self._history.items():
+                key_str = f"{scope[0]}|{scope[1]}"
+                data[key_str] = turns
+            
+            with open(self.persistence_file, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving conversation history: {e}")
 
     async def save_conversation_turn(
         self,
@@ -197,6 +231,9 @@ class ConversationStore:
             # cap per-scope history
             if len(turns) > self.max_history:
                 self._history[scope] = turns[-self.max_history :]
+            
+            # Save to file after update
+            self._save_to_file()
 
     async def get_recent_conversations(
         self,
@@ -274,6 +311,7 @@ class ConversationStore:
         async with self._lock:
             if user_identifier is None and conversation_id is None:
                 self._history.clear()
+                self._save_to_file()
                 return
 
             keys_to_delete = []
@@ -286,6 +324,8 @@ class ConversationStore:
 
             for k in keys_to_delete:
                 self._history.pop(k, None)
+            
+            self._save_to_file()
 
 class ConversationContextEnhancer:
     """Enhances questions with conversation context"""
@@ -588,6 +628,7 @@ class EnhancedChatHandler:
                     "sql_query": sql_query,
                     "csv_generated": bool(csv_path),
                     "chart_generated": bool(chart_json),
+                    "chart": chart_json,
                     "tool_success": tool_success,
                 },
             )
@@ -1148,6 +1189,78 @@ def create_app() -> FastAPI:
             logger.error(f"Error clearing conversation history: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     
+    # --- DATABASE AND MEMORY INSPECTION ---
+
+    @app.get("/api/v1/database/tables")
+    async def get_database_tables():
+        """Get list of tables in the connected database"""
+        try:
+            # MySQL specific query for tables
+            # Create a dummy context for the tool (required by Vanna 2.x)
+            context = ToolContext(
+                user=User(id="admin_viewer", username="admin", group_memberships=["admin"]),
+                conversation_id="db_inspection",
+                request_id=f"db_inspect_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                agent_memory=memory
+            )
+            from types import SimpleNamespace
+            # It seems run_sql expects an object with .sql attribute
+            sql_arg = SimpleNamespace(sql="SHOW TABLES")
+            df = await sql_runner.run_sql(sql_arg, context=context)
+            tables = []
+            if not df.empty:
+                # The column name is usually "Tables_in_dbname" but index 0 is safer
+                tables = df.iloc[:, 0].tolist()
+            
+            return JSONResponse(content={
+                "tables": tables,
+                "count": len(tables)
+            })
+        except Exception as e:
+            logger.error(f"Error getting database tables: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+            
+    @app.get("/api/v1/memory/all")
+    async def get_memory_contents(limit: int = 100):
+        """Get contents of agent memory (ChromaDB)"""
+        try:
+            # Create a context for the request
+            # We reuse the learning manager's context creation or create a new one
+            context = ToolContext(
+                user=User(id="admin_viewer", username="admin", group_memberships=["admin"]),
+                conversation_id="memory_inspection",
+                request_id=f"inspect_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                agent_memory=memory
+            )
+            
+            # Fetch recent memories
+            # accessing the memory object directly
+            memories = await memory.get_recent_text_memories(context=context, limit=limit)
+            
+            formatted_memories = []
+            for mem in memories:
+                try:
+                    # Try to parse content if it's JSON
+                    content = json.loads(mem.content)
+                except:
+                    content = mem.content
+                    
+                formatted_memories.append({
+                    "id": getattr(mem, 'id', 'unknown'),
+                    "content": content,
+                    "timestamp": mem.created_at.isoformat() if hasattr(mem, 'created_at') and mem.created_at else None,
+                    "type": getattr(mem, 'type', 'unknown')
+                })
+                
+            return JSONResponse(content={
+                "limit": limit,
+                "count": len(formatted_memories),
+                "memories": formatted_memories
+            })
+        except Exception as e:
+            logger.error(f"Error getting memory contents: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
     # --- DETAILED LEARNING ENDPOINTS ---
     
     @app.get("/api/v1/learning/detailed")
