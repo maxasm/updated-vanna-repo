@@ -1,0 +1,913 @@
+{
+  "api_user|test_conversation_001": [
+    {
+      "conversation_id": "test_conversation_001",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-26T16:08:10.928785",
+      "question": "Give me a summary of this database with some charts",
+      "response": "TABLE_SCHEMA,table_count\nclassicmodels,8\n\n\nResults saved to file: query_results_8a77f8d3.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_8a77f8d3.csv**\nTABLE_NAME\ncustomers\nemployees\noffices\norderdetails\norders\npayments\nproductlines\nproducts\n\n\nResults saved to file: query_results_bb4c9943.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_bb4c9943.csv**\nTABLE_NAME,COLUMN_NAME,DATA_TYPE,IS_NULLABLE\ncustomers,customerNumber,int,NO\ncustomers,customerName,varchar,NO\ncustomers,contactLastName,varchar,NO\ncustomers,contactFirstName,varchar,NO\ncustomers,phone,varchar,NO\ncustomers,addressLine1,varchar,NO\ncustomers,addressLine2,varchar,YES\ncustomers,city,varchar,NO\ncustomers,state,varchar,YES\ncustomers,postalCode,varchar,YES\ncustomers,country,varchar,NO\ncustomers,salesRepEmployeeNumber,int,YES\ncustomers,creditLimit,decimal,YES\nemployees,employeeNumber,int,NO\nemployees,lastName,varchar,NO\nemployees,firstName,varchar,NO\nemployees,extension,varchar,NO\nemployees,email,varchar,NO\nemployees,officeCode,varchar,NO\nemployees,reportsTo,int,YES\nemployees,jobTitle,varchar,NO\noffices,officeCode,varchar,NO\noffices,city,varchar,NO\noffices,phone,varchar,NO\noffices,addressLine1,varchar,NO\noffices,addressLine2,varchar,YES\noffices,state,varchar,YES\noffices,country,varchar,NO\noffices,postalCode,varchar,NO\noffices,territory,varchar,NO\norderdetails,orderNumber,int,N\n(Results truncated to 1000 characters. FOR LARGE RESULTS YOU DO NOT NEED TO SUMMARIZE THESE RESULTS OR PROVIDE OBSERVATIONS. THE NEXT STEP SHOULD BE A VISUALIZE_DATA CALL)\n\nResults saved to file: query_results_3b1fca5a.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_3b1fca5a.csv**\nCreated visualization from 'query_results_8a77f8d3.csv' (1 rows, 2 columns).\ntable_name,row_count\ncustomers,122\nemployees,23\noffices,7\norderdetails,2996\norders,326\npayments,273\nproductlines,7\nproducts,110\n\n\nResults saved to file: query_results_593c627a.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_593c627a.csv**\nCreated visualization from 'query_results_593c627a.csv' (8 rows, 2 columns).\nDATA_TYPE,column_count\nvarchar,35\nint,9\ndecimal,5\ndate,4\nsmallint,2\ntext,2\nmediumblob,1\nmediumtext,1\n\n\nResults saved to file: query_results_a1fe65c8.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_a1fe65c8.csv**\nCreated visualization from 'query_results_a1fe65c8.csv' (8 rows, 2 columns).\nstatus,order_count\nShipped,303\nCancelled,6\nIn Process,6\nResolved,4\nOn Hold,4\nDisputed,3\n\n\nResults saved to file: query_results_ff1970ea.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_ff1970ea.csv**\nTool limit reached after 10 executions. Task may be incomplete.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Give me a summary of this database with some charts",
+        "learned_enhanced": "Give me a summary of this database with some charts",
+        "sql_query": "",
+        "csv_generated": true,
+        "chart_generated": false,
+        "chart_id": null,
+        "chart": null,
+        "chart_source": null,
+        "tool_success": true
+      }
+    }
+  ],
+  "api_user|default": [
+    {
+      "conversation_id": "default",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-26T16:37:04.893103",
+      "question": "Show me the list of tables in the database",
+      "response": "TABLE_SCHEMA,TABLE_NAME\nclassicmodels,customers\nclassicmodels,employees\nclassicmodels,offices\nclassicmodels,orderdetails\nclassicmodels,orders\nclassicmodels,payments\nclassicmodels,productlines\nclassicmodels,products\n\n\nResults saved to file: query_results_7666a45a.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_7666a45a.csv**\nHere are the tables available in the database (schema: classicmodels):\n- customers\n- employees\n- offices\n- orderdetails\n- orders\n- payments\n- productlines\n- products\n\nLet me know if you want the columns or a quick entity-relationship diagram.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Previous conversation context:\n1. Q: Give me a summary of this database with some charts\n   A: TABLE_SCHEMA,table_count\nclassicmodels,8\n\n\nResults saved to file: query_results_8a77f8d3.csv\n\n**IMPO...\n\n...",
+        "learned_enhanced": "Show me the list of tables in the database",
+        "sql_query": "",
+        "csv_generated": true,
+        "chart_generated": false,
+        "chart_id": null,
+        "chart": null,
+        "chart_source": null,
+        "tool_success": true
+      }
+    },
+    {
+      "conversation_id": "default",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-26T16:38:54.921306",
+      "question": "Summarize the database and generate some charts",
+      "response": "table_name,row_count\ncustomers,122\nemployees,23\noffices,7\norderdetails,2996\norders,326\npayments,273\nproductlines,7\nproducts,110\n\n\nResults saved to file: query_results_a63e133c.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_a63e133c.csv**\nyear,revenue\n2003,3317348.39\n2004,4515905.51\n2005,1770936.71\n\n\nResults saved to file: query_results_3085db0c.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_3085db0c.csv**\nproductLine,revenue\nClassic Cars,3853922.49\nVintage Cars,1797559.63\nMotorcycles,1121426.12\nTrucks and Buses,1024113.57\nPlanes,954637.54\nShips,663998.34\nTrains,188532.92\n\n\nResults saved to file: query_results_ce130807.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_ce130807.csv**\ncountry,customers\nUSA,36\nGermany,13\nFrance,12\nSpain,7\nAustralia,5\nUK,5\nItaly,4\nNew Zealand,4\nCanada,3\nSingapore,3\n\n\nResults saved to file: query_results_88b54372.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_88b54372.csv**\nstatus,orders\nShipped,303\nCancelled,6\nIn Process,6\nResolved,4\nOn Hold,4\nDisputed,3\n\n\nResults saved to file: query_results_39798341.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_39798341.csv**\nCreated visualization from 'query_results_a63e133c.csv' (8 rows, 2 columns).\nCreated visualization from 'query_results_3085db0c.csv' (3 rows, 2 columns).\nCreated visualization from 'query_results_ce130807.csv' (7 rows, 2 columns).\nCreated visualization from 'query_results_88b54372.csv' (10 rows, 2 columns).\nCreated visualization from 'query_results_39798341.csv' (6 rows, 2 columns).\nHere\u2019s a concise summary of the classicmodels database with charts created for quick exploration:\n\n- Structure and size:\n  - 8 tables. Largest tables: orderdetails (2,996 rows) and orders (326), followed by customers (122) and products (110).\n  - Chart: Rows per table.\n\n- Business overview:\n  - Revenue trend: Peaks in 2004 (~$4.52M), with 2003 at ~$3.32M and 2005 at ~$1.77M.\n  - Chart: Revenue by Year.\n\n- Product performance:\n  - Top lines by revenue: Classic Cars (~$3.85M) lead, then Vintage Cars (~$1.80M) and Motorcycles (~$1.12M).\n  - Chart: Revenue by Product Line.\n\n- Customer distribution:\n  - Top countries by customer count: USA (36), Germany (13), France (12), Spain (7), Australia/UK (5 each).\n  - Chart: Top 10 Countries by Customer Count.\n\n- Order pipeline health:\n  - Status mix: Majority Shipped (303). Small volumes across Cancelled (6), In Process (6), Resolved (4), On Hold (4), Disputed (3).\n  - Chart: Orders by Status.\n\nLet me know if you\u2019d like additional views, such as monthly revenue, top customers by payments, product-level profitability, or geographic revenue heatmaps.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Previous conversation context:\n1. Q: Show me the list of tables in the database\n   A: TABLE_SCHEMA,TABLE_NAME\nclassicmodels,customers\nclassicmodels,employees\nclassicmodels,offices\nclassi...\n2. Q: Give...",
+        "learned_enhanced": "Summarize the database and generate some charts",
+        "sql_query": "",
+        "csv_generated": true,
+        "chart_generated": true,
+        "chart_id": "chart_67fdc7b60e41",
+        "chart": {
+          "data": [
+            {
+              "hovertemplate": "status=%{x}<br>orders=%{y}<extra></extra>",
+              "legendgroup": "",
+              "marker": {
+                "color": "#fe5d26",
+                "pattern": {
+                  "shape": ""
+                }
+              },
+              "name": "",
+              "orientation": "v",
+              "showlegend": false,
+              "textposition": "auto",
+              "x": [
+                "Cancelled",
+                "Disputed",
+                "In Process",
+                "On Hold",
+                "Resolved",
+                "Shipped"
+              ],
+              "xaxis": "x",
+              "y": {
+                "dtype": "i2",
+                "bdata": "BgADAAYABAAEAC8B"
+              },
+              "yaxis": "y",
+              "type": "bar"
+            }
+          ],
+          "layout": {
+            "template": {
+              "data": {
+                "histogram2dcontour": [
+                  {
+                    "type": "histogram2dcontour",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    },
+                    "colorscale": [
+                      [
+                        0.0,
+                        "#0d0887"
+                      ],
+                      [
+                        0.1111111111111111,
+                        "#46039f"
+                      ],
+                      [
+                        0.2222222222222222,
+                        "#7201a8"
+                      ],
+                      [
+                        0.3333333333333333,
+                        "#9c179e"
+                      ],
+                      [
+                        0.4444444444444444,
+                        "#bd3786"
+                      ],
+                      [
+                        0.5555555555555556,
+                        "#d8576b"
+                      ],
+                      [
+                        0.6666666666666666,
+                        "#ed7953"
+                      ],
+                      [
+                        0.7777777777777778,
+                        "#fb9f3a"
+                      ],
+                      [
+                        0.8888888888888888,
+                        "#fdca26"
+                      ],
+                      [
+                        1.0,
+                        "#f0f921"
+                      ]
+                    ]
+                  }
+                ],
+                "choropleth": [
+                  {
+                    "type": "choropleth",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    }
+                  }
+                ],
+                "histogram2d": [
+                  {
+                    "type": "histogram2d",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    },
+                    "colorscale": [
+                      [
+                        0.0,
+                        "#0d0887"
+                      ],
+                      [
+                        0.1111111111111111,
+                        "#46039f"
+                      ],
+                      [
+                        0.2222222222222222,
+                        "#7201a8"
+                      ],
+                      [
+                        0.3333333333333333,
+                        "#9c179e"
+                      ],
+                      [
+                        0.4444444444444444,
+                        "#bd3786"
+                      ],
+                      [
+                        0.5555555555555556,
+                        "#d8576b"
+                      ],
+                      [
+                        0.6666666666666666,
+                        "#ed7953"
+                      ],
+                      [
+                        0.7777777777777778,
+                        "#fb9f3a"
+                      ],
+                      [
+                        0.8888888888888888,
+                        "#fdca26"
+                      ],
+                      [
+                        1.0,
+                        "#f0f921"
+                      ]
+                    ]
+                  }
+                ],
+                "heatmap": [
+                  {
+                    "type": "heatmap",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    },
+                    "colorscale": [
+                      [
+                        0.0,
+                        "#0d0887"
+                      ],
+                      [
+                        0.1111111111111111,
+                        "#46039f"
+                      ],
+                      [
+                        0.2222222222222222,
+                        "#7201a8"
+                      ],
+                      [
+                        0.3333333333333333,
+                        "#9c179e"
+                      ],
+                      [
+                        0.4444444444444444,
+                        "#bd3786"
+                      ],
+                      [
+                        0.5555555555555556,
+                        "#d8576b"
+                      ],
+                      [
+                        0.6666666666666666,
+                        "#ed7953"
+                      ],
+                      [
+                        0.7777777777777778,
+                        "#fb9f3a"
+                      ],
+                      [
+                        0.8888888888888888,
+                        "#fdca26"
+                      ],
+                      [
+                        1.0,
+                        "#f0f921"
+                      ]
+                    ]
+                  }
+                ],
+                "contourcarpet": [
+                  {
+                    "type": "contourcarpet",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    }
+                  }
+                ],
+                "contour": [
+                  {
+                    "type": "contour",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    },
+                    "colorscale": [
+                      [
+                        0.0,
+                        "#0d0887"
+                      ],
+                      [
+                        0.1111111111111111,
+                        "#46039f"
+                      ],
+                      [
+                        0.2222222222222222,
+                        "#7201a8"
+                      ],
+                      [
+                        0.3333333333333333,
+                        "#9c179e"
+                      ],
+                      [
+                        0.4444444444444444,
+                        "#bd3786"
+                      ],
+                      [
+                        0.5555555555555556,
+                        "#d8576b"
+                      ],
+                      [
+                        0.6666666666666666,
+                        "#ed7953"
+                      ],
+                      [
+                        0.7777777777777778,
+                        "#fb9f3a"
+                      ],
+                      [
+                        0.8888888888888888,
+                        "#fdca26"
+                      ],
+                      [
+                        1.0,
+                        "#f0f921"
+                      ]
+                    ]
+                  }
+                ],
+                "surface": [
+                  {
+                    "type": "surface",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    },
+                    "colorscale": [
+                      [
+                        0.0,
+                        "#0d0887"
+                      ],
+                      [
+                        0.1111111111111111,
+                        "#46039f"
+                      ],
+                      [
+                        0.2222222222222222,
+                        "#7201a8"
+                      ],
+                      [
+                        0.3333333333333333,
+                        "#9c179e"
+                      ],
+                      [
+                        0.4444444444444444,
+                        "#bd3786"
+                      ],
+                      [
+                        0.5555555555555556,
+                        "#d8576b"
+                      ],
+                      [
+                        0.6666666666666666,
+                        "#ed7953"
+                      ],
+                      [
+                        0.7777777777777778,
+                        "#fb9f3a"
+                      ],
+                      [
+                        0.8888888888888888,
+                        "#fdca26"
+                      ],
+                      [
+                        1.0,
+                        "#f0f921"
+                      ]
+                    ]
+                  }
+                ],
+                "mesh3d": [
+                  {
+                    "type": "mesh3d",
+                    "colorbar": {
+                      "outlinewidth": 0,
+                      "ticks": ""
+                    }
+                  }
+                ],
+                "scatter": [
+                  {
+                    "fillpattern": {
+                      "fillmode": "overlay",
+                      "size": 10,
+                      "solidity": 0.2
+                    },
+                    "type": "scatter"
+                  }
+                ],
+                "parcoords": [
+                  {
+                    "type": "parcoords",
+                    "line": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scatterpolargl": [
+                  {
+                    "type": "scatterpolargl",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "bar": [
+                  {
+                    "error_x": {
+                      "color": "#2a3f5f"
+                    },
+                    "error_y": {
+                      "color": "#2a3f5f"
+                    },
+                    "marker": {
+                      "line": {
+                        "color": "#E5ECF6",
+                        "width": 0.5
+                      },
+                      "pattern": {
+                        "fillmode": "overlay",
+                        "size": 10,
+                        "solidity": 0.2
+                      }
+                    },
+                    "type": "bar"
+                  }
+                ],
+                "scattergeo": [
+                  {
+                    "type": "scattergeo",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scatterpolar": [
+                  {
+                    "type": "scatterpolar",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "histogram": [
+                  {
+                    "marker": {
+                      "pattern": {
+                        "fillmode": "overlay",
+                        "size": 10,
+                        "solidity": 0.2
+                      }
+                    },
+                    "type": "histogram"
+                  }
+                ],
+                "scattergl": [
+                  {
+                    "type": "scattergl",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scatter3d": [
+                  {
+                    "type": "scatter3d",
+                    "line": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    },
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scattermap": [
+                  {
+                    "type": "scattermap",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scattermapbox": [
+                  {
+                    "type": "scattermapbox",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scatterternary": [
+                  {
+                    "type": "scatterternary",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "scattercarpet": [
+                  {
+                    "type": "scattercarpet",
+                    "marker": {
+                      "colorbar": {
+                        "outlinewidth": 0,
+                        "ticks": ""
+                      }
+                    }
+                  }
+                ],
+                "carpet": [
+                  {
+                    "aaxis": {
+                      "endlinecolor": "#2a3f5f",
+                      "gridcolor": "white",
+                      "linecolor": "white",
+                      "minorgridcolor": "white",
+                      "startlinecolor": "#2a3f5f"
+                    },
+                    "baxis": {
+                      "endlinecolor": "#2a3f5f",
+                      "gridcolor": "white",
+                      "linecolor": "white",
+                      "minorgridcolor": "white",
+                      "startlinecolor": "#2a3f5f"
+                    },
+                    "type": "carpet"
+                  }
+                ],
+                "table": [
+                  {
+                    "cells": {
+                      "fill": {
+                        "color": "#EBF0F8"
+                      },
+                      "line": {
+                        "color": "white"
+                      }
+                    },
+                    "header": {
+                      "fill": {
+                        "color": "#C8D4E3"
+                      },
+                      "line": {
+                        "color": "white"
+                      }
+                    },
+                    "type": "table"
+                  }
+                ],
+                "barpolar": [
+                  {
+                    "marker": {
+                      "line": {
+                        "color": "#E5ECF6",
+                        "width": 0.5
+                      },
+                      "pattern": {
+                        "fillmode": "overlay",
+                        "size": 10,
+                        "solidity": 0.2
+                      }
+                    },
+                    "type": "barpolar"
+                  }
+                ],
+                "pie": [
+                  {
+                    "automargin": true,
+                    "type": "pie"
+                  }
+                ]
+              },
+              "layout": {
+                "autotypenumbers": "strict",
+                "colorway": [
+                  "#636efa",
+                  "#EF553B",
+                  "#00cc96",
+                  "#ab63fa",
+                  "#FFA15A",
+                  "#19d3f3",
+                  "#FF6692",
+                  "#B6E880",
+                  "#FF97FF",
+                  "#FECB52"
+                ],
+                "font": {
+                  "color": "#2a3f5f"
+                },
+                "hovermode": "closest",
+                "hoverlabel": {
+                  "align": "left"
+                },
+                "paper_bgcolor": "white",
+                "plot_bgcolor": "#E5ECF6",
+                "polar": {
+                  "bgcolor": "#E5ECF6",
+                  "angularaxis": {
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "ticks": ""
+                  },
+                  "radialaxis": {
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "ticks": ""
+                  }
+                },
+                "ternary": {
+                  "bgcolor": "#E5ECF6",
+                  "aaxis": {
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "ticks": ""
+                  },
+                  "baxis": {
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "ticks": ""
+                  },
+                  "caxis": {
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "ticks": ""
+                  }
+                },
+                "coloraxis": {
+                  "colorbar": {
+                    "outlinewidth": 0,
+                    "ticks": ""
+                  }
+                },
+                "colorscale": {
+                  "sequential": [
+                    [
+                      0.0,
+                      "#0d0887"
+                    ],
+                    [
+                      0.1111111111111111,
+                      "#46039f"
+                    ],
+                    [
+                      0.2222222222222222,
+                      "#7201a8"
+                    ],
+                    [
+                      0.3333333333333333,
+                      "#9c179e"
+                    ],
+                    [
+                      0.4444444444444444,
+                      "#bd3786"
+                    ],
+                    [
+                      0.5555555555555556,
+                      "#d8576b"
+                    ],
+                    [
+                      0.6666666666666666,
+                      "#ed7953"
+                    ],
+                    [
+                      0.7777777777777778,
+                      "#fb9f3a"
+                    ],
+                    [
+                      0.8888888888888888,
+                      "#fdca26"
+                    ],
+                    [
+                      1.0,
+                      "#f0f921"
+                    ]
+                  ],
+                  "sequentialminus": [
+                    [
+                      0.0,
+                      "#0d0887"
+                    ],
+                    [
+                      0.1111111111111111,
+                      "#46039f"
+                    ],
+                    [
+                      0.2222222222222222,
+                      "#7201a8"
+                    ],
+                    [
+                      0.3333333333333333,
+                      "#9c179e"
+                    ],
+                    [
+                      0.4444444444444444,
+                      "#bd3786"
+                    ],
+                    [
+                      0.5555555555555556,
+                      "#d8576b"
+                    ],
+                    [
+                      0.6666666666666666,
+                      "#ed7953"
+                    ],
+                    [
+                      0.7777777777777778,
+                      "#fb9f3a"
+                    ],
+                    [
+                      0.8888888888888888,
+                      "#fdca26"
+                    ],
+                    [
+                      1.0,
+                      "#f0f921"
+                    ]
+                  ],
+                  "diverging": [
+                    [
+                      0,
+                      "#8e0152"
+                    ],
+                    [
+                      0.1,
+                      "#c51b7d"
+                    ],
+                    [
+                      0.2,
+                      "#de77ae"
+                    ],
+                    [
+                      0.3,
+                      "#f1b6da"
+                    ],
+                    [
+                      0.4,
+                      "#fde0ef"
+                    ],
+                    [
+                      0.5,
+                      "#f7f7f7"
+                    ],
+                    [
+                      0.6,
+                      "#e6f5d0"
+                    ],
+                    [
+                      0.7,
+                      "#b8e186"
+                    ],
+                    [
+                      0.8,
+                      "#7fbc41"
+                    ],
+                    [
+                      0.9,
+                      "#4d9221"
+                    ],
+                    [
+                      1,
+                      "#276419"
+                    ]
+                  ]
+                },
+                "xaxis": {
+                  "gridcolor": "white",
+                  "linecolor": "white",
+                  "ticks": "",
+                  "title": {
+                    "standoff": 15
+                  },
+                  "zerolinecolor": "white",
+                  "automargin": true,
+                  "zerolinewidth": 2
+                },
+                "yaxis": {
+                  "gridcolor": "white",
+                  "linecolor": "white",
+                  "ticks": "",
+                  "title": {
+                    "standoff": 15
+                  },
+                  "zerolinecolor": "white",
+                  "automargin": true,
+                  "zerolinewidth": 2
+                },
+                "scene": {
+                  "xaxis": {
+                    "backgroundcolor": "#E5ECF6",
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "showbackground": true,
+                    "ticks": "",
+                    "zerolinecolor": "white",
+                    "gridwidth": 2
+                  },
+                  "yaxis": {
+                    "backgroundcolor": "#E5ECF6",
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "showbackground": true,
+                    "ticks": "",
+                    "zerolinecolor": "white",
+                    "gridwidth": 2
+                  },
+                  "zaxis": {
+                    "backgroundcolor": "#E5ECF6",
+                    "gridcolor": "white",
+                    "linecolor": "white",
+                    "showbackground": true,
+                    "ticks": "",
+                    "zerolinecolor": "white",
+                    "gridwidth": 2
+                  }
+                },
+                "shapedefaults": {
+                  "line": {
+                    "color": "#2a3f5f"
+                  }
+                },
+                "annotationdefaults": {
+                  "arrowcolor": "#2a3f5f",
+                  "arrowhead": 0,
+                  "arrowwidth": 1
+                },
+                "geo": {
+                  "bgcolor": "white",
+                  "landcolor": "#E5ECF6",
+                  "subunitcolor": "white",
+                  "showland": true,
+                  "showlakes": true,
+                  "lakecolor": "white"
+                },
+                "title": {
+                  "x": 0.05
+                },
+                "mapbox": {
+                  "style": "light"
+                }
+              }
+            },
+            "xaxis": {
+              "anchor": "y",
+              "domain": [
+                0.0,
+                1.0
+              ],
+              "title": {
+                "text": "status"
+              }
+            },
+            "yaxis": {
+              "anchor": "x",
+              "domain": [
+                0.0,
+                1.0
+              ],
+              "title": {
+                "text": "orders"
+              }
+            },
+            "legend": {
+              "tracegroupgap": 0
+            },
+            "title": {
+              "text": "Chart"
+            },
+            "barmode": "relative",
+            "font": {
+              "color": "#023d60"
+            },
+            "autosize": true,
+            "colorway": [
+              "#15a8a8",
+              "#fe5d26",
+              "#bf1363",
+              "#023d60"
+            ]
+          }
+        },
+        "chart_source": "forced_after_visualize_tool",
+        "tool_success": true
+      }
+    }
+  ]
+}

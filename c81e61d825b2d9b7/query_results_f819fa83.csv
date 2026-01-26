@@ -1,0 +1,7 @@
+TABLE_NAME,FOREIGN_KEY_COUNT
+employees,2
+orderdetails,2
+customers,1
+orders,1
+payments,1
+products,1

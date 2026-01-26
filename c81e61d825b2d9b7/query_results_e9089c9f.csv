@@ -1,0 +1,9 @@
+TABLE_NAME,NULLABLE_COLS,TOTAL_COLS
+customers,5,13
+productlines,3,4
+offices,2,9
+orders,2,7
+employees,1,8
+orderdetails,0,5
+payments,0,4
+products,0,9

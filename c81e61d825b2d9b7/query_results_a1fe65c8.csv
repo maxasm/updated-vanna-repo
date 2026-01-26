@@ -1,0 +1,9 @@
+DATA_TYPE,column_count
+varchar,35
+int,9
+decimal,5
+date,4
+smallint,2
+text,2
+mediumblob,1
+mediumtext,1

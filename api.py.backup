@@ -36,9 +36,6 @@ from vanna import Agent, AgentConfig
 # Learning Manager
 from learning_manager import LearningManager
 
-# Golden Query Manager
-from golden_query_manager import get_golden_query_manager
-
 # Import VannaFastAPIServer for base functionality
 from vanna.servers.fastapi import VannaFastAPIServer
 
@@ -99,9 +96,6 @@ agent = Agent(
 
 # --- 6. LEARNING MANAGER ---
 learning_manager = LearningManager(agent_memory=memory)
-
-# --- 6.5 GOLDEN QUERY MANAGER ---
-golden_query_manager = get_golden_query_manager()
 
 # --- 7. CSV RESULT MANAGER ---
 class CSVResultManager:
@@ -552,7 +546,7 @@ class EnhancedChatHandler:
             sql_query = ""
             csv_path = None
             chart_json = None
-            chart_source = None  # Will be "vanna_ai_tool", "auto_generated", or None
+            chart_code = ""
             tool_used = False
             tool_success = False
             
@@ -568,6 +562,10 @@ class EnhancedChatHandler:
                 if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
                     response_text += component.simple_component.text + "\n"
                 
+                # Debug: log component type for troubleshooting
+                component_type = type(component).__name__
+                logger.debug(f"Component type: {component_type}, attributes: {[attr for attr in dir(component) if not attr.startswith('_')]}")
+                
                 # Check if this is a tool call component
                 if hasattr(component, 'tool_call_component'):
                     tool_used = True
@@ -580,27 +578,82 @@ class EnhancedChatHandler:
                                 sql_query = tool_call.args['sql']
                                 logger.info(f"Captured SQL from tool call: {sql_query[:100]}...")
                         elif tool_call.tool_name == 'visualize_data':
-                            # Visualization tool was called - this indicates chart generation
-                            logger.info(f"Visualization tool called, expecting chart data")
+                            # Visualization tool was called
+                            logger.info(f"Visualization tool called, checking for chart data")
                             tool_used = True
-                            chart_source = "vanna_ai_tool"
                 
-                # Try to extract chart data from component
-                extracted_chart = self._extract_chart_from_component(component)
-                if extracted_chart and chart_json is None:
-                    chart_json = extracted_chart
-                    if chart_source is None:
-                        chart_source = "vanna_ai_tool"
-                    logger.info(f"Chart data extracted from component")
-                
-                # Check for tool result errors (like missing CSV files)
+                # Check if this is a tool result component (result of a tool execution)
                 if hasattr(component, 'tool_result_component'):
+                    tool_used = True
                     tool_result = component.tool_result_component
-                    if hasattr(tool_result, 'error') and tool_result.error:
-                        logger.warning(f"Tool result error detected: {tool_result.error}")
-                        # If it's a file not found error for visualization, we might want to handle it
-                        if "FileNotFoundError" in str(tool_result.error) or "does not exist" in str(tool_result.error):
-                            logger.warning(f"CSV file not found for visualization tool. This may affect chart generation.")
+                    logger.info(f"Tool result component found")
+                    # Check if tool result contains chart data
+                    if hasattr(tool_result, 'result'):
+                        result = tool_result.result
+                        if isinstance(result, dict) and ('data' in result or 'layout' in result):
+                            # This looks like chart data
+                            chart_json = result
+                            logger.info(f"Captured chart data from tool result")
+                
+                # Check for ChartComponent (capital C)
+                if hasattr(component, 'ChartComponent'):
+                    tool_used = True
+                    chart_component = component.ChartComponent
+                    logger.info(f"ChartComponent found")
+                    # Try to extract chart data
+                    if hasattr(chart_component, 'chart_data'):
+                        chart_json = chart_component.chart_data
+                        logger.info(f"Captured chart data from ChartComponent")
+                    elif hasattr(chart_component, 'to_dict'):
+                        chart_json = chart_component.to_dict()
+                        logger.info(f"Converted ChartComponent to dict")
+                    elif hasattr(chart_component, 'data'):
+                        # Check if data attribute contains chart data
+                        data = chart_component.data
+                        if isinstance(data, dict) and ('data' in data or 'layout' in data):
+                            chart_json = data
+                            logger.info(f"Captured chart data from ChartComponent.data")
+                
+                # Check if this is a chart component (lowercase)
+                if hasattr(component, 'chart_component'):
+                    tool_used = True
+                    # Direct chart component
+                    chart_component = component.chart_component
+                    if hasattr(chart_component, 'chart_data'):
+                        chart_json = chart_component.chart_data
+                        logger.info(f"Captured chart data from chart component")
+                    elif hasattr(chart_component, 'to_dict'):
+                        chart_json = chart_component.to_dict()
+                        logger.info(f"Converted chart component to dict")
+                
+                # Also check if component has chart data directly
+                if hasattr(component, 'chart_data'):
+                    tool_used = True
+                    chart_json = component.chart_data
+                    logger.info(f"Captured chart data directly from component")
+                
+                # Check for plotly chart in component attributes
+                for attr_name in ['plotly_chart', 'chart', 'figure', 'plotly_figure']:
+                    if hasattr(component, attr_name):
+                        chart_data = getattr(component, attr_name)
+                        if isinstance(chart_data, dict) and ('data' in chart_data or 'layout' in chart_data):
+                            chart_json = chart_data
+                            tool_used = True
+                            logger.info(f"Captured chart data from {attr_name} attribute")
+                            break
+                
+                # Check if component has any attribute that looks like chart data
+                for attr_name in dir(component):
+                    if not attr_name.startswith('_') and attr_name not in ['simple_component', 'tool_call_component', 'tool_result_component', 'chart_component', 'ChartComponent']:
+                        try:
+                            attr_value = getattr(component, attr_name)
+                            if isinstance(attr_value, dict) and ('data' in attr_value or 'layout' in attr_value):
+                                chart_json = attr_value
+                                tool_used = True
+                                logger.info(f"Captured chart data from {attr_name} attribute (auto-detected)")
+                                break
+                        except:
+                            pass
             
             # Check if a new CSV was generated
             csv_after = self._find_latest_csv()
@@ -612,62 +665,36 @@ class EnhancedChatHandler:
 
                 # If we have SQL, execute it to get the dataframe for CSV generation
                 if sql_query:
-                        try:
-                            df = self.sql_runner.run_sql(sql_query)
-                            if not df.empty:
-                                # Generate hash for the query
-                                import hashlib
-                                query_hash = hashlib.md5(sql_query.encode()).hexdigest()
+                    try:
+                        df = self.sql_runner.run_sql(sql_query)
+                        if not df.empty:
+                            # Generate hash for the query
+                            import hashlib
+                            query_hash = hashlib.md5(sql_query.encode()).hexdigest()
 
-                                # Save results to CSV (in case it wasn't saved by the agent)
-                                csv_path = self.csv_manager.save_query_results(df, query_hash)
+                            # Save results to CSV (in case it wasn't saved by the agent)
+                            csv_path = self.csv_manager.save_query_results(df, query_hash)
 
-                                # Record successful tool usage (CSV exists either way)
-                                await self.learning_manager.record_tool_usage(
-                                    question=message,
-                                    tool_name="run_sql",
-                                    args={"sql": sql_query, "result_file": csv_path},
-                                    success=True,
-                                    metadata={
-                                        "csv_file": csv_path,
-                                        "response_preview": response_text[:100],
-                                        "sql_extracted": True,
-                                        "user_id": user_identifier,
-                                        "username": username
-                                    }
-                                )
-
-                                # Save as golden query if successful
-                                try:
-                                    # Import golden query manager
-                                    from golden_query_manager import get_golden_query_manager
-                                    gqm = get_golden_query_manager()
-
-                                    # Add as golden query
-                                    golden_query = gqm.add_golden_query(
-                                        user_id=user_identifier,
-                                        conversation_id=conversation_id,
-                                        original_question=message,
-                                        sql_query=sql_query,
-                                        description=f"Auto-generated from successful query",
-                                        tags=["auto_generated", "successful"],
-                                        metadata={
-                                            "csv_file": csv_path,
-                                            "response_preview": response_text[:100],
-                                            "auto_saved": True,
-                                            "timestamp": datetime.now().isoformat()
-                                        }
-                                    )
-                                    logger.info(f"Auto-saved successful query as golden query: {golden_query.query_id}")
-                                except Exception as e:
-                                    logger.error(f"Error saving golden query: {e}")
-                                    # Don't fail the request if golden query saving fails
-                        except Exception as e:
-                            logger.error(f"Error executing SQL: {e}")
-                            # Still record success since CSV was generated
-                            await self.learning_manager.record_tool_usage(
-                                question=message,
-                                tool_name="run_sql",
+                        # Record successful tool usage (CSV exists either way)
+                        await self.learning_manager.record_tool_usage(
+                            question=message,
+                            tool_name="run_sql",
+                            args={"sql": sql_query, "result_file": csv_path},
+                            success=True,
+                            metadata={
+                                "csv_file": csv_path,
+                                "response_preview": response_text[:100],
+                                "sql_extracted": True,
+                                "user_id": user_identifier,
+                                "username": username
+                            }
+                        )
+                    except Exception as e:
+                        logger.error(f"Error executing SQL: {e}")
+                        # Still record success since CSV was generated
+                        await self.learning_manager.record_tool_usage(
+                            question=message,
+                            tool_name="run_sql",
                             args={"sql": sql_query},
                             success=True,  # CSV was generated, so it's a success
                             metadata={"csv_file": csv_path, "error": str(e), "user_id": user_identifier}
@@ -726,32 +753,6 @@ class EnhancedChatHandler:
                             }
                         )
                         
-                        # Save as golden query if successful
-                        try:
-                            # Import golden query manager
-                            from golden_query_manager import get_golden_query_manager
-                            gqm = get_golden_query_manager()
-                            
-                            # Add as golden query
-                            golden_query = gqm.add_golden_query(
-                                user_id=user_identifier,
-                                conversation_id=conversation_id,
-                                original_question=message,
-                                sql_query=sql_query,
-                                description=f"Auto-generated from successful query",
-                                tags=["auto_generated", "successful"],
-                                metadata={
-                                    "csv_file": csv_path,
-                                    "response_preview": response_text[:100],
-                                    "auto_saved": True,
-                                    "timestamp": datetime.now().isoformat()
-                                }
-                            )
-                            logger.info(f"Auto-saved successful query as golden query: {golden_query.query_id}")
-                        except Exception as e:
-                            logger.error(f"Error saving golden query: {e}")
-                            # Don't fail the request if golden query saving fails
-                        
                         tool_success = True
                         
 
@@ -791,40 +792,12 @@ class EnhancedChatHandler:
                         metadata={"error": str(e), "user_id": user_identifier}
                     )
             
-            # Check if visualization was created but chart wasn't extracted
-            # This happens when VisualizeDataTool runs but chart extraction fails
-            if "Created visualization" in response_text and csv_path and chart_json is None:
-                logger.info(f"Detected 'Created visualization' in response but no chart extracted. CSV path: {csv_path}")
-                try:
-                    # Try to load the CSV and generate chart
-                    if os.path.exists(csv_path):
-                        df = pd.read_csv(csv_path)
-                        if not df.empty:
-                            logger.info(f"Loaded CSV for chart generation: {csv_path}, shape: {df.shape}")
-                            chart_dict = self.chart_generator.generate_chart(df=df)
-                            if chart_dict:
-                                chart_json = chart_dict
-                                chart_source = "forced_after_visualize_tool"
-                                logger.info(f"Generated chart from CSV after visualization tool call")
-                            else:
-                                logger.warning(f"Chart generator returned None for CSV: {csv_path}")
-                        else:
-                            logger.warning(f"CSV is empty: {csv_path}")
-                    else:
-                        logger.warning(f"CSV file not found for visualization: {csv_path}")
-                except Exception as e:
-                    logger.error(f"Error generating chart from CSV after visualization: {e}")
-            
             # Save chart data if we have a chart
             chart_info = None
             if chart_json:
                 try:
                     chart_info = self.chart_manager.save_chart_data(chart_json)
                     logger.info(f"Chart saved with ID: {chart_info['chart_id']}")
-                    
-                    # If chart_source is not set yet (e.g., auto-generated chart), set it now
-                    if chart_source is None:
-                        chart_source = "auto_generated"
                     
                     # Record successful chart generation
                     await self.learning_manager.record_tool_usage(
@@ -836,7 +809,7 @@ class EnhancedChatHandler:
                             "chart_id": chart_info['chart_id'],
                             "chart_generated": True,
                             "user_id": user_identifier,
-                            "chart_source": chart_source
+                            "chart_source": "vanna_ai_tool" if tool_used else "auto_generated"
                         }
                     )
                 except Exception as e:
@@ -858,7 +831,6 @@ class EnhancedChatHandler:
                     "chart_generated": bool(chart_json),
                     "chart_id": chart_info['chart_id'] if chart_info else None,
                     "chart": chart_json,
-                    "chart_source": chart_source,
                     "tool_success": tool_success,
                 },
             )
@@ -880,7 +852,7 @@ class EnhancedChatHandler:
                 "timestamp": datetime.now().isoformat(),
                 "tool_used": tool_used,
                 "chart_generated": bool(chart_json),
-                "chart_source": chart_source,
+                "chart_source": "vanna_ai_tool" if tool_used and chart_json else "auto_generated" if chart_json else None,
                 "user_id": user_identifier,
                 "conversation_id": conversation_id,
                 "username": username
@@ -920,138 +892,6 @@ class EnhancedChatHandler:
         except Exception as e:
             logger.error(f"Error finding latest CSV: {e}")
             return None
-    
-    def _extract_chart_from_component(self, component) -> Optional[Dict[str, Any]]:
-        """Extract chart data from a component if it contains any"""
-        logger.debug(f"Checking component for chart data: {type(component)}")
-        
-        # Check for tool result component with chart data in metadata
-        if hasattr(component, 'tool_result_component'):
-            tool_result = component.tool_result_component
-            logger.debug(f"Found tool_result_component: {type(tool_result)}")
-            
-            if hasattr(tool_result, 'metadata') and tool_result.metadata:
-                logger.debug(f"Tool result has metadata: {type(tool_result.metadata)}")
-                # Check if metadata is a dictionary and has 'chart' key
-                if isinstance(tool_result.metadata, dict):
-                    if 'chart' in tool_result.metadata:
-                        chart_data = tool_result.metadata['chart']
-                        logger.debug(f"Found chart in metadata: {type(chart_data)}")
-                        if self._is_valid_chart_data(chart_data):
-                            logger.info(f"Extracted chart data from tool_result.metadata['chart']")
-                            return chart_data
-                    # Also check for plotly_figure key
-                    if 'plotly_figure' in tool_result.metadata:
-                        chart_data = tool_result.metadata['plotly_figure']
-                        logger.debug(f"Found plotly_figure in metadata: {type(chart_data)}")
-                        if self._is_valid_chart_data(chart_data):
-                            logger.info(f"Extracted chart data from tool_result.metadata['plotly_figure']")
-                            return chart_data
-            
-            # Check if tool result has ui_component with rich_component
-            if hasattr(tool_result, 'ui_component'):
-                ui_component = tool_result.ui_component
-                logger.debug(f"Found ui_component: {type(ui_component)}")
-                if hasattr(ui_component, 'rich_component'):
-                    rich_component = ui_component.rich_component
-                    logger.debug(f"Found rich_component: {type(rich_component)}")
-                    # Check if rich_component has chart_data attribute
-                    if hasattr(rich_component, 'chart_data'):
-                        chart_data = rich_component.chart_data
-                        logger.debug(f"Found chart_data in rich_component: {type(chart_data)}")
-                        if self._is_valid_chart_data(chart_data):
-                            logger.info(f"Extracted chart data from rich_component.chart_data")
-                            return chart_data
-                    # Check if rich_component has data attribute
-                    elif hasattr(rich_component, 'data'):
-                        chart_data = rich_component.data
-                        logger.debug(f"Found data in rich_component: {type(chart_data)}")
-                        if self._is_valid_chart_data(chart_data):
-                            logger.info(f"Extracted chart data from rich_component.data")
-                            return chart_data
-        
-        # Check for ChartComponent (capital C)
-        if hasattr(component, 'ChartComponent'):
-            chart_component = component.ChartComponent
-            logger.debug(f"Found ChartComponent: {type(chart_component)}")
-            # Try to extract chart data
-            if hasattr(chart_component, 'chart_data'):
-                chart_data = chart_component.chart_data
-                logger.debug(f"Found chart_data in ChartComponent: {type(chart_data)}")
-                if self._is_valid_chart_data(chart_data):
-                    logger.info(f"Extracted chart data from ChartComponent.chart_data")
-                    return chart_data
-            elif hasattr(chart_component, 'to_dict'):
-                chart_data = chart_component.to_dict()
-                logger.debug(f"Converted ChartComponent to dict: {type(chart_data)}")
-                if self._is_valid_chart_data(chart_data):
-                    logger.info(f"Extracted chart data from ChartComponent.to_dict()")
-                    return chart_data
-            elif hasattr(chart_component, 'data'):
-                data = chart_component.data
-                logger.debug(f"Found data in ChartComponent: {type(data)}")
-                if self._is_valid_chart_data(data):
-                    logger.info(f"Extracted chart data from ChartComponent.data")
-                    return data
-        
-        # Check if this is a chart component (lowercase)
-        if hasattr(component, 'chart_component'):
-            chart_component = component.chart_component
-            logger.debug(f"Found chart_component: {type(chart_component)}")
-            if hasattr(chart_component, 'chart_data'):
-                chart_data = chart_component.chart_data
-                logger.debug(f"Found chart_data in chart_component: {type(chart_data)}")
-                if self._is_valid_chart_data(chart_data):
-                    logger.info(f"Extracted chart data from chart_component.chart_data")
-                    return chart_data
-            elif hasattr(chart_component, 'to_dict'):
-                chart_data = chart_component.to_dict()
-                logger.debug(f"Converted chart_component to dict: {type(chart_data)}")
-                if self._is_valid_chart_data(chart_data):
-                    logger.info(f"Extracted chart data from chart_component.to_dict()")
-                    return chart_data
-        
-        # Also check if component has chart data directly
-        if hasattr(component, 'chart_data'):
-            chart_data = component.chart_data
-            logger.debug(f"Found chart_data directly on component: {type(chart_data)}")
-            if self._is_valid_chart_data(chart_data):
-                logger.info(f"Extracted chart data from component.chart_data")
-                return chart_data
-        
-        # Check for plotly chart in component attributes
-        for attr_name in ['plotly_chart', 'chart', 'figure', 'plotly_figure', 'plotly']:
-            if hasattr(component, attr_name):
-                chart_data = getattr(component, attr_name)
-                logger.debug(f"Found {attr_name} attribute on component: {type(chart_data)}")
-                if self._is_valid_chart_data(chart_data):
-                    logger.info(f"Extracted chart data from component.{attr_name}")
-                    return chart_data
-        
-        # Check if component itself is a dict with chart data
-        if isinstance(component, dict):
-            logger.debug(f"Component is a dict, checking for chart data")
-            if self._is_valid_chart_data(component):
-                logger.info(f"Component itself is valid chart data")
-                return component
-        
-        logger.debug(f"No chart data found in component")
-        return None
-    
-    def _is_valid_chart_data(self, chart_data: Any) -> bool:
-        """Check if data is valid Plotly chart data"""
-        if not isinstance(chart_data, dict):
-            return False
-        
-        # Check for Plotly chart structure
-        if 'data' in chart_data or 'layout' in chart_data:
-            return True
-        
-        # Check for alternative chart structures
-        if 'type' in chart_data and chart_data.get('type') in ['bar', 'line', 'scatter', 'pie', 'histogram']:
-            return True
-        
-        return False
     
     def _get_csv_path_for_request(self, request_id: str) -> Optional[str]:
         """Get CSV path for a specific request using request ID"""
@@ -1900,225 +1740,6 @@ def create_app() -> FastAPI:
             })
         except Exception as e:
             logger.error(f"Error testing learning enhancement: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    # --- GOLDEN QUERY ENDPOINTS ---
-    
-    @app.get("/api/v1/golden_queries")
-    async def get_golden_queries(
-        user_id: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        search: Optional[str] = None,
-        tags: Optional[str] = None,
-        min_success_rate: float = 0.0,
-        limit: int = 20
-    ):
-        """Get golden queries with optional filtering"""
-        try:
-            # Parse tags if provided
-            tag_list = tags.split(",") if tags else None
-            
-            # Search golden queries
-            queries = golden_query_manager.search_golden_queries(
-                user_id=user_id,
-                search_text=search,
-                tags=tag_list,
-                min_success_rate=min_success_rate,
-                limit=limit
-            )
-            
-            # Convert to dict for JSON response
-            queries_data = [query.to_dict() for query in queries]
-            
-            return JSONResponse(content={
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "search": search,
-                "tags": tag_list,
-                "min_success_rate": min_success_rate,
-                "limit": limit,
-                "count": len(queries_data),
-                "golden_queries": queries_data
-            })
-        except Exception as e:
-            logger.error(f"Error getting golden queries: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.get("/api/v1/golden_queries/{query_id}")
-    async def get_golden_query(query_id: str):
-        """Get a specific golden query by ID"""
-        try:
-            query = golden_query_manager.get_golden_query(query_id)
-            if not query:
-                raise HTTPException(status_code=404, detail=f"Golden query {query_id} not found")
-            
-            return JSONResponse(content=query.to_dict())
-        except Exception as e:
-            logger.error(f"Error getting golden query {query_id}: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/api/v1/golden_queries")
-    async def create_golden_query(request: Request):
-        """Create or update a golden query"""
-        try:
-            request_data = await request.json()
-            
-            # Extract required fields
-            user_id = request_data.get("user_id")
-            conversation_id = request_data.get("conversation_id")
-            original_question = request_data.get("original_question")
-            sql_query = request_data.get("sql_query")
-            
-            if not all([user_id, conversation_id, original_question, sql_query]):
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Missing required fields: user_id, conversation_id, original_question, sql_query"
-                )
-            
-            # Extract optional fields
-            description = request_data.get("description")
-            tags = request_data.get("tags", [])
-            metadata = request_data.get("metadata", {})
-            
-            # Add golden query
-            query = golden_query_manager.add_golden_query(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                original_question=original_question,
-                sql_query=sql_query,
-                description=description,
-                tags=tags,
-                metadata=metadata
-            )
-            
-            return JSONResponse(content={
-                "status": "success",
-                "message": "Golden query created/updated",
-                "query_id": query.query_id,
-                "query": query.to_dict()
-            })
-        except Exception as e:
-            logger.error(f"Error creating golden query: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/api/v1/golden_queries/{query_id}/record_success")
-    async def record_golden_query_success(query_id: str):
-        """Record a successful use of a golden query"""
-        try:
-            golden_query_manager.record_query_success(query_id)
-            return JSONResponse(content={
-                "status": "success",
-                "message": f"Recorded success for golden query {query_id}"
-            })
-        except Exception as e:
-            logger.error(f"Error recording golden query success: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/api/v1/golden_queries/{query_id}/record_failure")
-    async def record_golden_query_failure(query_id: str):
-        """Record a failed use of a golden query"""
-        try:
-            golden_query_manager.record_query_failure(query_id)
-            return JSONResponse(content={
-                "status": "success",
-                "message": f"Recorded failure for golden query {query_id}"
-            })
-        except Exception as e:
-            logger.error(f"Error recording golden query failure: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.post("/api/v1/golden_queries/{query_id}/tags")
-    async def add_tags_to_golden_query(query_id: str, request: Request):
-        """Add tags to a golden query"""
-        try:
-            request_data = await request.json()
-            tags = request_data.get("tags", [])
-            
-            if not tags:
-                raise HTTPException(status_code=400, detail="No tags provided")
-            
-            success = golden_query_manager.add_tags_to_query(query_id, tags)
-            if not success:
-                raise HTTPException(status_code=404, detail=f"Golden query {query_id} not found")
-            
-            return JSONResponse(content={
-                "status": "success",
-                "message": f"Added tags to golden query {query_id}",
-                "tags": tags
-            })
-        except Exception as e:
-            logger.error(f"Error adding tags to golden query: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.delete("/api/v1/golden_queries/{query_id}/tags")
-    async def remove_tags_from_golden_query(query_id: str, request: Request):
-        """Remove tags from a golden query"""
-        try:
-            request_data = await request.json()
-            tags = request_data.get("tags", [])
-            
-            if not tags:
-                raise HTTPException(status_code=400, detail="No tags provided")
-            
-            success = golden_query_manager.remove_tags_from_query(query_id, tags)
-            if not success:
-                raise HTTPException(status_code=404, detail=f"Golden query {query_id} not found")
-            
-            return JSONResponse(content={
-                "status": "success",
-                "message": f"Removed tags from golden query {query_id}",
-                "tags": tags
-            })
-        except Exception as e:
-            logger.error(f"Error removing tags from golden query: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.delete("/api/v1/golden_queries/{query_id}")
-    async def delete_golden_query(query_id: str):
-        """Delete a golden query"""
-        try:
-            success = golden_query_manager.delete_golden_query(query_id)
-            if not success:
-                raise HTTPException(status_code=404, detail=f"Golden query {query_id} not found")
-            
-            return JSONResponse(content={
-                "status": "success",
-                "message": f"Deleted golden query {query_id}"
-            })
-        except Exception as e:
-            logger.error(f"Error deleting golden query: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.get("/api/v1/golden_queries/stats")
-    async def get_golden_query_stats():
-        """Get statistics about golden queries"""
-        try:
-            stats = golden_query_manager.get_stats()
-            return JSONResponse(content=stats)
-        except Exception as e:
-            logger.error(f"Error getting golden query stats: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @app.get("/api/v1/golden_queries/export")
-    async def export_golden_queries(format: str = "json"):
-        """Export golden queries in specified format"""
-        try:
-            if format not in ["json", "csv"]:
-                raise HTTPException(status_code=400, detail="Format must be 'json' or 'csv'")
-            
-            export_data = golden_query_manager.export_golden_queries(format)
-            
-            if format == "json":
-                return JSONResponse(content=json.loads(export_data))
-            else:  # csv
-                from fastapi.responses import PlainTextResponse
-                return PlainTextResponse(
-                    content=export_data,
-                    media_type="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=golden_queries.csv"}
-                )
-        except Exception as e:
-            logger.error(f"Error exporting golden queries: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     
     return app

@@ -1,0 +1,9 @@
+child_table,parent_table,fk_columns
+customers,employees,1
+employees,employees,1
+employees,offices,1
+orderdetails,orders,1
+orderdetails,products,1
+orders,customers,1
+payments,customers,1
+products,productlines,1

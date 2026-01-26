@@ -1,0 +1,9 @@
+TABLE_NAME,TABLE_ROWS,size_mb
+customers,122,0.06
+products,110,0.08
+employees,23,0.05
+offices,7,0.02
+productlines,4,0.02
+orderdetails,0,0.03
+orders,0,0.03
+payments,0,0.02

@@ -1,0 +1,9 @@
+TABLE_NAME,SIZE_MB
+products,0.08
+customers,0.06
+employees,0.05
+orderdetails,0.03
+orders,0.03
+offices,0.02
+payments,0.02
+productlines,0.02
