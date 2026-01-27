@@ -2042,16 +2042,29 @@ def create_app() -> FastAPI:
         try:
             request_data = await request.json()
             
-            # Extract required fields
-            user_id = request_data.get("user_id")
-            conversation_id = request_data.get("conversation_id")
+            # Extract headers from request
+            headers = dict(request.headers)
+            
+            # Extract required fields with fallback to headers (consistent with other endpoints)
+            user_id = (
+                request_data.get("user_id")
+                or headers.get("x-user-id")
+                or headers.get("x-user-identifier")
+            )
+            conversation_id = (
+                request_data.get("conversation_id")
+                or headers.get("x-conversation-id")
+                or headers.get("x-conversation")
+                or (request_data.get("metadata") or {}).get("conversation_id")
+                or "default"  # Default value if not provided
+            )
             original_question = request_data.get("original_question")
             sql_query = request_data.get("sql_query")
             
-            if not all([user_id, conversation_id, original_question, sql_query]):
+            if not all([user_id, original_question, sql_query]):
                 raise HTTPException(
                     status_code=400, 
-                    detail="Missing required fields: user_id, conversation_id, original_question, sql_query"
+                    detail="Missing required fields: user_id, original_question, sql_query"
                 )
             
             # Extract optional fields

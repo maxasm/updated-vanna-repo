@@ -131,5 +131,56 @@
     "last_used": "2026-01-26T16:00:10.792397",
     "created_at": "2026-01-26T16:00:10.790989",
     "metadata": {}
+  },
+  "8bb1a38de2d1": {
+    "query_id": "8bb1a38de2d1",
+    "user_id": "maxwell_test_001",
+    "conversation_id": "default",
+    "original_question": "Wat is de structuur en betekenis van de belangrijkste velden in de aankoop tabel?",
+    "sql_query": "DESCRIBE aankoop",
+    "description": "Volledige kolommen van aankooporders: firma = bedrijf/leverancier, leveranciersnaam = naam leverancier, tot_prijs_gel = totaalprijs incl. geld, factuurdatum = datum factuur, leveranciersnr = unieke leverancier ID",
+    "tags": [
+      "schema",
+      "aankoop",
+      "documentation"
+    ],
+    "success_count": 6,
+    "failure_count": 0,
+    "last_used": "2026-01-27T16:57:41.729276",
+    "created_at": "2026-01-27T16:46:47.950927",
+    "metadata": {}
+  },
+  "fe816e6184b0": {
+    "query_id": "fe816e6184b0",
+    "user_id": "test_user_001",
+    "conversation_id": "test_conversation_001",
+    "original_question": "Test question",
+    "sql_query": "SELECT 1",
+    "description": "Test description",
+    "tags": [
+      "test"
+    ],
+    "success_count": 2,
+    "failure_count": 0,
+    "last_used": "2026-01-27T16:56:25.163874",
+    "created_at": "2026-01-27T16:46:47.973057",
+    "metadata": {}
+  },
+  "60abeb7c4f36": {
+    "query_id": "60abeb7c4f36",
+    "user_id": "test_user_002",
+    "conversation_id": "header_conversation_001",
+    "original_question": "Test question with header conversation_id",
+    "sql_query": "SELECT 2",
+    "description": "Test with conversation_id in header",
+    "tags": [
+      "test",
+      "header"
+    ],
+    "success_count": 2,
+    "failure_count": 0,
+    "last_used": "2026-01-27T16:56:25.176589",
+    "created_at": "2026-01-27T16:46:47.998222",
+    "metadata": {}
   }
 }
