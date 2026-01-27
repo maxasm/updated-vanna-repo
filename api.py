@@ -94,7 +94,7 @@ agent = Agent(
     tool_registry=registry,
     user_resolver=APIUserResolver(),
     agent_memory=memory,
-    config=AgentConfig()
+    config=AgentConfig(max_tool_iterations=10000)
 )
 
 # --- 6. LEARNING MANAGER ---
@@ -558,20 +558,29 @@ class EnhancedChatHandler:
             
             # We'll capture all components to analyze tool usage
             components = []
+            component_count = 0
             async for component in self.agent.send_message(
                 request_context=request_context,
                 message=enhanced_question,
                 conversation_id=conversation_id,
             ):
                 components.append(component)
+                component_count += 1
+                
+                # Log component structure for debugging
+                logger.debug(f"Component {component_count}: type={type(component)}")
+                
                 # Collect response text
                 if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
-                    response_text += component.simple_component.text + "\n"
+                    text = component.simple_component.text
+                    response_text += text + "\n"
+                    logger.debug(f"  Added text: {text[:100]}...")
                 
                 # Check if this is a tool call component
                 if hasattr(component, 'tool_call_component'):
                     tool_used = True
                     tool_call = component.tool_call_component
+                    logger.info(f"Found tool_call_component: {type(tool_call)}")
                     if hasattr(tool_call, 'tool_name'):
                         logger.info(f"Tool called: {tool_call.tool_name}")
                         if tool_call.tool_name == 'run_sql':
@@ -579,11 +588,27 @@ class EnhancedChatHandler:
                             if hasattr(tool_call, 'args') and 'sql' in tool_call.args:
                                 sql_query = tool_call.args['sql']
                                 logger.info(f"Captured SQL from tool call: {sql_query[:100]}...")
+                            else:
+                                logger.warning(f"Tool call for 'run_sql' but no 'sql' in args or args missing")
+                                # Try to inspect args structure
+                                if hasattr(tool_call, 'args'):
+                                    logger.warning(f"Tool call args: {tool_call.args}")
                         elif tool_call.tool_name == 'visualize_data':
                             # Visualization tool was called - this indicates chart generation
                             logger.info(f"Visualization tool called, expecting chart data")
                             tool_used = True
                             chart_source = "vanna_ai_tool"
+                    else:
+                        logger.warning(f"Tool call component has no tool_name attribute")
+                else:
+                    # Check for other possible tool-related attributes
+                    component_dict = component.model_dump() if hasattr(component, 'model_dump') else {}
+                    if component_dict.get('rich_component'):
+                        rich = component_dict['rich_component']
+                        if isinstance(rich, dict) and 'type' in rich:
+                            logger.debug(f"  Rich component type: {rich['type']}")
+                            if 'tool' in rich['type'].lower() or 'sql' in rich['type'].lower():
+                                logger.info(f"Found potential tool in rich_component: {rich['type']}")
                 
                 # Try to extract chart data from component
                 extracted_chart = self._extract_chart_from_component(component)
@@ -596,11 +621,14 @@ class EnhancedChatHandler:
                 # Check for tool result errors (like missing CSV files)
                 if hasattr(component, 'tool_result_component'):
                     tool_result = component.tool_result_component
+                    logger.info(f"Found tool_result_component: {type(tool_result)}")
                     if hasattr(tool_result, 'error') and tool_result.error:
                         logger.warning(f"Tool result error detected: {tool_result.error}")
                         # If it's a file not found error for visualization, we might want to handle it
                         if "FileNotFoundError" in str(tool_result.error) or "does not exist" in str(tool_result.error):
                             logger.warning(f"CSV file not found for visualization tool. This may affect chart generation.")
+            
+            logger.info(f"Processed {component_count} components from agent")
             
             # Check if a new CSV was generated
             csv_after = self._find_latest_csv()
@@ -893,17 +921,60 @@ class EnhancedChatHandler:
             raise HTTPException(status_code=500, detail=str(e))
     
     def _extract_sql_from_response(self, response_text: str) -> str:
-        """Extract SQL query from agent response text"""
-        # Try to find SQL in code blocks
-        sql_match = re.search(r'```sql\s*(.*?)\s*```', response_text, re.DOTALL | re.IGNORECASE)
-        if not sql_match:
-            # Try other SQL patterns
-            sql_match = re.search(r'SELECT .*?FROM', response_text, re.DOTALL | re.IGNORECASE)
+        """Improved SQL extraction from agent response text"""
+        logger.debug(f"Attempting to extract SQL from response text (length: {len(response_text)})")
         
+        # First, try to find SQL in code blocks (most reliable)
+        # Match ```sql ... ``` or ```SQL ... ```
+        sql_match = re.search(r'```(?:sql|SQL)\s*(.*?)\s*```', response_text, re.DOTALL)
         if sql_match:
-            sql_query = sql_match.group(1) if sql_match.group(1) else sql_match.group(0)
-            return sql_query.strip()
+            sql_query = sql_match.group(1).strip()
+            logger.info(f"Extracted SQL from code block: {sql_query[:100]}...")
+            return sql_query
         
+        # Try to find SQL statements without code blocks
+        # Look for common SQL patterns - improved to stop at semicolon or end of line
+        sql_patterns = [
+            # SHOW commands - stop at semicolon or end
+            r'(SHOW\s+(?:TABLES|DATABASES|COLUMNS|INDEXES|CREATE\s+TABLE)[^;]*)(?:;|$)',
+            # SELECT statements (more complete capture)
+            r'(SELECT\s+(?:.|\n)*?(?:FROM\s+(?:.|\n)*?)(?:\s+WHERE\s+(?:.|\n)*?)?(?:\s+GROUP BY\s+(?:.|\n)*?)?(?:\s+ORDER BY\s+(?:.|\n)*?)?(?:\s+LIMIT\s+\d+)?)(?:\s*;|$)',
+            # DESCRIBE commands
+            r'(DESCRIBE\s+\w+[^;]*)(?:;|$)',
+            # MySQL specific: SHOW CREATE TABLE
+            r'(SHOW\s+CREATE\s+TABLE\s+\w+[^;]*)(?:;|$)',
+        ]
+        
+        for pattern in sql_patterns:
+            match = re.search(pattern, response_text, re.IGNORECASE | re.DOTALL)
+            if match:
+                sql = match.group(1).strip()
+                # Clean up: remove trailing punctuation and extra whitespace
+                sql = re.sub(r'[;.]\s*$', '', sql)
+                logger.info(f"Extracted SQL using pattern '{pattern[:30]}...': {sql[:100]}...")
+                return sql
+        
+        # Try to find any SQL-like statement that starts with common keywords
+        sql_keywords = ['SELECT', 'SHOW', 'DESCRIBE', 'EXPLAIN', 'WITH']
+        for keyword in sql_keywords:
+            # Find the keyword in text (case insensitive)
+            pattern = rf'\b{keyword}\b'
+            match = re.search(pattern, response_text, re.IGNORECASE)
+            if match:
+                start_idx = match.start()
+                # Look for end of statement (semicolon, double newline, or end of text)
+                remaining = response_text[start_idx:]
+                # Try to find a reasonable end point
+                end_match = re.search(r'[;.]\s*\n|\n\n|$', remaining)
+                if end_match:
+                    end_idx = start_idx + end_match.start()
+                    sql = response_text[start_idx:end_idx].strip()
+                    # Basic validation: should contain SQL keywords
+                    if len(sql.split()) > 2:  # At least 3 words (e.g., "SHOW TABLES")
+                        logger.info(f"Extracted SQL starting with '{keyword}': {sql[:100]}...")
+                        return sql
+        
+        logger.debug("No SQL found in response text")
         return ""
     
     def _find_latest_csv(self) -> Optional[str]:

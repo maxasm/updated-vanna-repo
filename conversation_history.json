@@ -909,5 +909,49 @@
         "tool_success": true
       }
     }
+  ],
+  "test_user|default": [
+    {
+      "conversation_id": "default",
+      "user_id": "test_user",
+      "username": "tester",
+      "timestamp": "2026-01-27T12:28:43.593992",
+      "question": "Show me all tables in the database",
+      "response": "I tried to query the system catalogs to list all tables, but the connection failed due to a missing driver dependency: the environment needs the \u201ccryptography\u201d package (this commonly happens with MySQL/MariaDB using caching_sha2_password/sha256_password).\n\nQuick next steps (pick your database):\n- MySQL/MariaDB: install the package (pip install cryptography), then I can retry. SQL you can run yourself: SHOW FULL TABLES; or SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY TABLE_SCHEMA, TABLE_NAME;\n- PostgreSQL: SELECT table_schema, table_name FROM information_schema.tables WHERE table_type='BASE TABLE' AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY table_schema, table_name;\n- SQL Server: SELECT s.name AS table_schema, t.name AS table_name FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id ORDER BY s.name, t.name;\n- SQLite: SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name;\n\nPlease let me know which database engine you\u2019re using, and if you can install the cryptography package (or have me try again after it\u2019s installed). I can then rerun and return the full table list.\n\nSummary of what I did: I attempted multiple dialect-appropriate queries to list tables, but each failed at connection time due to the missing \u201ccryptography\u201d dependency required by the database driver.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Show me all tables in the database",
+        "learned_enhanced": "Show me all tables in the database",
+        "sql_query": "",
+        "csv_generated": false,
+        "chart_generated": false,
+        "chart_id": null,
+        "chart": null,
+        "chart_source": null,
+        "tool_success": false
+      }
+    }
+  ],
+  "test_user_123|default": [
+    {
+      "conversation_id": "default",
+      "user_id": "test_user_123",
+      "username": "tester",
+      "timestamp": "2026-01-27T12:37:44.137527",
+      "question": "Show me all tables",
+      "response": "I tried to list the tables, but the database connection failed due to an auth dependency: the client needs the \u201ccryptography\u201d package for MySQL\u2019s caching_sha2_password/sha256_password.\n\nHow to fix:\n- If you control the environment running this assistant: install the package, e.g. pip install cryptography, then I can retry.\n- Alternatively (less ideal), use a MySQL user configured with mysql_native_password for this connection.\n- If this isn\u2019t MySQL, let me know the DB type so I can use the right query.\n\nOnce fixed, I can list tables across schemas or just a specific database. Do you want all schemas, or a specific database/schema name?\n\nSummary: I attempted to query information_schema to list all tables, but the connection failed due to a missing cryptography dependency required by the MySQL auth plugin.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Show me all tables",
+        "learned_enhanced": "Show me all tables",
+        "sql_query": "",
+        "csv_generated": false,
+        "chart_generated": false,
+        "chart_id": null,
+        "chart": null,
+        "chart_source": null,
+        "tool_success": false
+      }
+    }
   ]
 }

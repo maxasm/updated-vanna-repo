@@ -26,7 +26,7 @@ def inspect_agent():
         agent_memory=memory,
         tool_registry=ToolRegistry(),
         user_resolver=DummyUserResolver(),
-        config=AgentConfig()
+        config=AgentConfig(max_tool_iterations=10000)
     )
     
     print("Agent methods:")
