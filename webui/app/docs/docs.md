@@ -1,107 +1,98 @@
-### Chat / Query Endpoints
+This document describes the public endpoints of the Vanna AI REST + SSE/WebSocket API.
 
-| Method | Path                              | Purpose                                                                 | Main Input Parameters                                                                 | Main Response Format / Structure                                                                                     |
-|--------|-----------------------------------|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| POST   | `/api/v1/chat`                    | Simple synchronous chat (recommended for most use cases)                | JSON body: `message` (req), `headers` (opt), `conversation_id` (opt)                  | JSON: `{ "answer", "sql", "csv_url", "chart", "chart_info", "success", ... }`                                         |
-| POST   | `/api/vanna/v2/chat_sse`          | Real-time streaming via Server-Sent Events (rich UI components)         | Same as `/api/v1/chat`                                                                | `text/event-stream` – pure `data: {rich component}` lines (no `event:` field), ends with `data: [DONE]`             |
-| WS     | `/api/vanna/v2/chat_websocket`    | Bidirectional real-time WebSocket chat                                  | JSON messages (same structure as above)                                               | JSON events: `start`, `chunk`, `sql`, `csv`, `complete`, `error`                                                      |
-| POST   | `/api/vanna/v2/chat_poll`         | Polling-style fallback (behaves like `/api/v1/chat`)                    | Same as `/api/v1/chat`                                                                | Same JSON response as `/api/v1/chat`                                                                                  |
+## Chat & Query Endpoints
 
-**Detailed SSE behavior (/api/vanna/v2/chat_sse)**
+These endpoints handle natural language to SQL queries and visualization generation.
+
+| Method | Endpoint                            | Description                                      | Authentication / Headers (optional)                     | Request Body (application/json)                                                                 | Response Content-Type & Format                                                                 |
+|--------|-------------------------------------|--------------------------------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| POST   | `/api/v1/chat`                      | Synchronous chat – returns complete result       | `x-user-id`, `x-username`, `x-conversation-id`, `x-user-groups` | ```json<br>{<br>  "message": "Top 5 products by revenue in 2025",<br>  "headers": {<br>    "x-conversation-id": "conv_abc123"<br>  },<br>  "conversation_id": "conv_abc123"   // optional if in headers<br>}<br>``` | `application/json`<br>```json<br>{<br>  "answer": "string",<br>  "sql": "string",<br>  "csv_url": "string",<br>  "chart": { ... Plotly dict ... },<br>  "chart_info": { "chart_id": "...", "json_url": "...", ... },<br>  "success": true,<br>  "tool_used": true,<br>  "timestamp": "2026-01-27T..."<br>}<br>``` |
+| POST   | `/api/vanna/v2/chat_sse`            | Server-Sent Events – real-time rich streaming    | Same as above                                            | Same structure as `/api/v1/chat`                                                                 | `text/event-stream`<br>Multiple `data: { ... }` lines (rich components)<br>Terminates with `data: [DONE]` |
+| POST   | `/api/vanna/v2/chat_poll`           | Polling-style fallback (synchronous)             | Same as above                                            | Same structure as `/api/v1/chat`                                                                 | Same JSON response as `/api/v1/chat`                                                            |
+| WS     | `/api/vanna/v2/chat_websocket`      | Bidirectional real-time WebSocket                | Headers sent in first JSON message                       | First message:<br>```json<br>{<br>  "message": "...",<br>  "headers": { ... },<br>  "conversation_id": "..."<br>}<br>``` | JSON frames:<br>`{ "event": "start"\|"chunk"\|"sql"\|"csv"\|"complete"\|"error", ... }`           |
+
+### Detailed SSE Response Format (`/api/vanna/v2/chat_sse`)
 
 - **Content-Type**: `text/event-stream`
-- **Format**: Only `data: {json}\n\n` lines — **no** `event:` field is used
-- Each `data:` line contains **one rich UI component**
-- Stream ends with: `data: [DONE]\n\n`
+- **Structure**: Only `data: {json object}\n\n` lines (no `event:` field)
+- **Each line** = one rich UI component update
+- **Stream termination**: `data: [DONE]\n\n`
 
-**Typical rich component structure** (inside every `data:` line):
+**Rich component schema** (every `data:` payload)
 
 ```json
 {
   "rich": {
-    "id": "comp_abc123",
-    "type": "vanna-status-bar",           // ← this field tells you what it is
-    "lifecycle": "create" | "update",
-    "visible": true,
-    "interactive": false,
-    "timestamp": "2026-01-27T11:45:08.403Z",
-    "data": { ... component-specific payload ... }
+    "id":               "string",           // unique component ID
+    "type":             "string",           // e.g. "vanna-status-bar", "text", "dataframe"
+    "lifecycle":        "create" | "update",
+    "visible":          boolean,
+    "interactive":      boolean,
+    "timestamp":        "string (ISO 8601)",
+    "data":             { ... type-specific payload ... }
   },
-  "simple": {                             // optional plain-text fallback
-    "type": "text",
-    "text": "Processing your question..."
-  },
-  "conversation_id": "conv_xxx",
-  "request_id": "req_yyy",
-  "timestamp": 1769440988.403561
+  "simple": {                               // optional plain-text fallback
+    "type":             "text",
+    "text":             "string"
+  } | null,
+  "conversation_id":    "string",
+  "request_id":         "string (UUID)",
+  "timestamp":          number              // Unix timestamp with ms
 }
 ```
 
-**Most common component types you will encounter**
+**Common component types & `data` payloads**
 
-| Component type          | When it appears                              | Typical `data` content examples / purpose                                    |
-|-------------------------|----------------------------------------------|--------------------------------------------------------------------------------|
-| `vanna-status-bar`      | Almost always first & last                   | `{ "status": "working"|"idle"|"warning", "message": "...", "detail": "..." }` |
-| `vanna-task-tracker`    | During thinking / tool execution             | `{ "operation": "add_task"|"update_task", "task": { "title", "status", ... } }` |
-| `notification`          | Success, warning, error messages             | `{ "message": "...", "level": "success"|"warning"|"error" }`                   |
-| `dataframe`             | When SQL returns tabular results             | `{ "columns": [...], "data": [[...], ...], "title": "...", "row_count": 42 }`  |
-| `text`                  | Final natural-language answer (usually last) | `{ "content": "Here is your answer in markdown..." }`                          |
-| `vanna-chat-input`      | Input box state changes                      | `{ "placeholder": "...", "disabled": false, "focus": true }`                   |
+| Type                   | Purpose                                      | Typical `data` keys / example values                                                                 |
+|------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `vanna-status-bar`     | Global status/loading bar                    | `{ "status": "working"\|"idle"\|"warning", "message": "...", "detail": "..." }`                      |
+| `vanna-task-tracker`   | Step-by-step progress                        | `{ "operation": "add_task"\|"update_task", "task": { "title": "...", "status": "completed", ... } }` |
+| `notification`         | Toast messages                               | `{ "message": "...", "level": "success"\|"warning"\|"error", "dismissible": true }`                  |
+| `dataframe`            | Interactive result table                     | `{ "columns": [...], "data": [[...], ...], "title": "...", "row_count": 42, "description": "..." }`  |
+| `text`                 | Main natural-language answer                 | `{ "content": "Markdown supported...", "markdown": true }`                                           |
+| `vanna-chat-input`     | Chat input field state                       | `{ "placeholder": "Ask follow-up...", "disabled": false, "focus": true }`                             |
 
-**Simplified real stream example**
+## Conversation Management
 
-```
-data: {"rich":{"type":"vanna-status-bar","data":{"status":"working","message":"Thinking..."}}}
-data: {"rich":{"type":"vanna-task-tracker","data":{"operation":"add_task","task":{"title":"Loading context"}}}}
-data: {"rich":{"type":"notification","data":{"message":"SQL generated","level":"success"}}}
-data: {"rich":{"type":"dataframe","data":{"columns":["name","revenue"],"data":[["Acme",124500],...]}}}
-data: {"rich":{"type":"text","data":{"content":"Top customers are..."}}}
-data: {"rich":{"type":"vanna-status-bar","data":{"status":"idle"}}}
-data: [DONE]
-```
+| Method | Endpoint                                    | Description                              | Query Params / Body                              | Response Structure                                                                 |
+|--------|---------------------------------------------|------------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------------------|
+| GET    | `/api/v1/conversation/history`              | Recent conversation turns                | `user_identifier`, `conversation_id`, `limit`    | `{ "conversations": [{ "question", "response", "timestamp", ... }], "count": n }`  |
+| GET    | `/api/v1/conversation/filter`               | Keyword-filtered search                  | Same + `keyword`                                 | Same format                                                                         |
+| DELETE | `/api/v1/conversation/clear`                | Clear history (scoped or global)         | `user_identifier`, `conversation_id`             | `{ "status": "success", "message": "...", "timestamp": "..." }`                     |
 
-### Conversation History Endpoints
+## Chart Endpoints
 
-| Method   | Path                                      | Purpose                                      | Query Params                                      | Response Structure                                      |
-|----------|-------------------------------------------|----------------------------------------------|---------------------------------------------------|-----------------------------------------------------------------|
-| GET      | `/api/v1/conversation/history`            | Get recent conversation turns                | `user_identifier`, `conversation_id`, `limit`     | `{ "conversations": [ {question, response, timestamp, ...} ], "count": n }` |
-| GET      | `/api/v1/conversation/filter`             | Keyword-filtered conversation search         | same + `keyword`                                  | Same format + filtered results                                  |
-| DELETE   | `/api/v1/conversation/clear`              | Clear history (scoped or global)             | `user_identifier`, `conversation_id`              | `{ "status": "success", "message": "...", ... }`                |
+| Method | Endpoint                                             | Description                              | Parameters / Query                               | Response / Content-Type                          |
+|--------|------------------------------------------------------|------------------------------------------|--------------------------------------------------|--------------------------------------------------|
+| GET    | `/api/v1/charts/{chart_id}/json`                     | Chart data (Plotly JSON)                 | `chart_id` (path)                                | `application/json` – Plotly figure               |
+| GET    | `/api/v1/charts/{chart_id}/html`                     | Interactive Plotly HTML page             | `chart_id` (path)                                | `text/html`                                      |
+| GET    | `/api/v1/charts/{chart_id}/png`                      | Static chart image                       | `chart_id` (path)                                | `image/png`                                      |
+| GET    | `/api/v1/charts/{chart_id}/download?format=png\|html\|json` | Download chart file                   | `chart_id` (path), `format` (query)              | File attachment with `Content-Disposition`       |
 
-### Chart Endpoints
+## Golden Queries (Trusted / Saved Queries)
 
-| Method | Path                                         | Purpose                                 | Parameters                        | Response / Content Type              |
-|--------|----------------------------------------------|-----------------------------------------|-----------------------------------|--------------------------------------|
-| GET    | `/api/v1/charts/{chart_id}/json`             | Chart data as JSON                      | `chart_id` (path)                 | Plotly JSON object                   |
-| GET    | `/api/v1/charts/{chart_id}/html`             | Interactive Plotly HTML                 | `chart_id`                        | HTML page                            |
-| GET    | `/api/v1/charts/{chart_id}/png`              | Static PNG image                        | `chart_id`                        | `image/png` file                     |
-| GET    | `/api/v1/charts/{chart_id}/download?format=...` | Download in format (png, html, json) | `chart_id`, `format` (query)      | File attachment                      |
+| Method | Endpoint                                             | Description                              | Body / Parameters                                | Response Structure                                   |
+|--------|------------------------------------------------------|------------------------------------------|--------------------------------------------------|------------------------------------------------------|
+| GET    | `/api/v1/golden_queries`                             | List golden queries                      | `user_id`, `search`, `tags`, `min_success_rate`, `limit` | `{ "golden_queries": [...], "count": n }`            |
+| GET    | `/api/v1/golden_queries/{query_id}`                  | Get single golden query                  | `query_id` (path)                                | Single query object                                  |
+| POST   | `/api/v1/golden_queries`                             | Create or update golden query            | `{ "user_id", "original_question", "sql_query", "description", "tags": [], ... }` | `{ "status": "success", "query_id": "...", ... }`    |
+| POST   | `/api/v1/golden_queries/{query_id}/record_success`   | Log successful usage                     | —                                                | `{ "status": "success" }`                            |
+| POST   | `/api/v1/golden_queries/{query_id}/record_failure`   | Log failed usage                         | —                                                | `{ "status": "success" }`                            |
 
-### Golden Queries Endpoints
+## Learning & System Endpoints
 
-| Method | Path                                              | Purpose                                          | Main Parameters / Body                                                                 | Response Structure                                 |
-|--------|---------------------------------------------------|--------------------------------------------------|----------------------------------------------------------------------------------------|----------------------------------------------------|
-| GET    | `/api/v1/golden_queries`                          | List golden (trusted) queries                    | `user_id`, `search`, `tags`, `min_success_rate`, `limit`                               | `{ "golden_queries": [ ... ], "count": n }`        |
-| GET    | `/api/v1/golden_queries/{query_id}`               | Get single golden query                          | `query_id` (path)                                                                      | Single query object                                |
-| POST   | `/api/v1/golden_queries`                          | Create / update golden query                     | JSON: `user_id`, `original_question`, `sql_query`, `tags`, `description`, etc.         | `{ "status": "success", "query_id": "...", ... }`  |
-| POST   | `/api/v1/golden_queries/{query_id}/record_success` | Record successful usage                          | `query_id`                                                                             | `{ "status": "success" }`                          |
-| POST   | `/api/v1/golden_queries/{query_id}/record_failure` | Record failed usage                              | `query_id`                                                                             | `{ "status": "success" }`                          |
+| Method | Endpoint                                             | Description                              | Parameters / Body                                | Response                                             |
+|--------|------------------------------------------------------|------------------------------------------|--------------------------------------------------|------------------------------------------------------|
+| GET    | `/api/v1/learning/stats`                             | Learning pattern statistics              | —                                                | Statistics object (counts, rates, etc.)              |
+| GET    | `/api/v1/learning/patterns`                          | List learned patterns                    | `pattern_type=query\|tool`, `limit`              | `{ "patterns": [...] }`                              |
+| POST   | `/api/v1/learning/enhance_test`                      | Test question enhancement                | `{ "question": "..." }`                          | `{ "enhanced_question": "...", "similar_queries": [...] }` |
+| GET    | `/health`                                            | API health & endpoint overview           | —                                                | Detailed status + endpoint list                      |
+| GET    | `/api/v1/database/tables`                            | List tables in connected database        | —                                                | `{ "tables": ["table1", "table2", ...], "count": n }` |
+| GET    | `/api/v1/memory/all?limit=50`                        | Inspect agent memory contents            | `limit` (optional)                               | `{ "memories": [...], "count": n }`                  |
 
-### Learning & Admin Endpoints
-
-| Method | Path                                         | Purpose                                          | Parameters / Body                            | Response Structure                                   |
-|--------|----------------------------------------------|--------------------------------------------------|----------------------------------------------|------------------------------------------------------|
-| GET    | `/api/v1/learning/stats`                     | Learning pattern statistics                      | —                                            | Statistics object (counts, success rates, etc.)      |
-| GET    | `/api/v1/learning/patterns`                  | List learned query/tool patterns                 | `pattern_type=query\|tool`, `limit`          | `{ "patterns": [ ... ] }`                            |
-| POST   | `/api/v1/learning/enhance_test`              | Test question enhancement with learned patterns  | `{ "question": "..." }`                      | `{ "enhanced_question", "similar_queries", ... }`    |
-| GET    | `/api/v1/health`                             | Health check (v1)                                | —                                            | `{ "status": "healthy", "service": "vanna-api", ... }` |
-| GET    | `/health`                                    | Root health + endpoint overview                  | —                                            | Detailed health + list of all endpoints              |
-| GET    | `/api/v1/database/tables`                    | List tables in connected MySQL database          | —                                            | `{ "tables": ["orders", "customers", ...], "count": n }` |
-| GET    | `/api/v1/memory/all?limit=50`                | Peek into Chroma agent memory contents           | `limit` (optional)                           | `{ "memories": [ ... ], "count": n }`                |
-
-### Static File Serving
+## Static File Serving
 
 - **Mount point**: `/static/*`
 - Serves:
-  - Generated CSV files (`/static/query_results_abc123.csv`)
-  - Chart files (`/static/charts/chart_xyz.json`, `.html`, `.png`)
+  - Generated CSV results: `/static/query_results_xxx.csv`
+  - Chart artifacts: `/static/charts/chart_xxx.{json,html,png}`
