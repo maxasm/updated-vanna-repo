@@ -19,6 +19,26 @@
         "chart_source": null,
         "tool_success": true
       }
+    },
+    {
+      "conversation_id": "test_conversation_001",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-27T13:19:11.004729",
+      "question": "Show me the list of tables in the database",
+      "response": "Here are the tables in the classicmodels database:\n- customers\n- employees\n- offices\n- orderdetails\n- orders\n- payments\n- productlines\n- products\n\nSummary: I attempted to query the database directly, but the connection failed due to a missing auth dependency. Based on the previously identified schema (classicmodels with 8 tables), I provided the standard table list. If you\u2019d like, I can verify this by running SELECT table_name FROM information_schema.tables WHERE table_schema='classicmodels' once the connection issue is resolved.\n",
+      "type": "conversation",
+      "metadata": {
+        "enhanced_question": "Previous conversation context:\n1. Q: Give me a summary of this database with some charts\n   A: TABLE_SCHEMA,table_count\nclassicmodels,8\n\n\nResults saved to file: query_results_8a77f8d3.csv\n\n**IMPO...\n\n...",
+        "learned_enhanced": "Show me the list of tables in the database",
+        "sql_query": "SELECT table_name FROM information_schema.tables WHERE table_schema='classicmodels' once the connection issue is resolved",
+        "csv_generated": false,
+        "chart_generated": false,
+        "chart_id": null,
+        "chart": null,
+        "chart_source": null,
+        "tool_success": false
+      }
     }
   ],
   "api_user|default": [
