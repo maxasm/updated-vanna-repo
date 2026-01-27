@@ -871,6 +871,14 @@ class EnhancedChatHandler:
                     logger.error(f"Error saving chart data: {e}")
                     # Don't fail the request if chart saving fails
             
+            # Always try to extract SQL from response text as a final fallback
+            # This handles cases where SQL is in the response but wasn't captured from tool calls
+            if not sql_query:
+                extracted_sql = self._extract_sql_from_response(response_text)
+                if extracted_sql:
+                    logger.info(f"Extracted SQL from response text as fallback: {extracted_sql[:100]}...")
+                    sql_query = extracted_sql
+            
             # Save conversation to history (always, even if the agent produced an empty answer)
             await self.conversation_store.save_conversation_turn(
                 question=message,
