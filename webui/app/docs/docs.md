@@ -1,7 +1,3 @@
-Here is the **full, updated API documentation** for your Vanna AI REST API (as implemented in the provided `api.py` file), with the **corrected and accurate SSE description** for `/api/vanna/v2/chat_sse` based on the real Vanna 2.x rich-component streaming behavior.
-
-All endpoints are listed below with method, path, purpose, required/optional input parameters, and expected response structure.
-
 ### Chat / Query Endpoints
 
 | Method | Path                              | Purpose                                                                 | Main Input Parameters                                                                 | Main Response Format / Structure                                                                                     |
