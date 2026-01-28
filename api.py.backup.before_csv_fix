@@ -543,7 +543,7 @@ class EnhancedChatHandler:
                 headers=headers,
                 metadata=request.get("metadata", {})
             )
-
+            
             # Track CSV before query
             csv_before = self._find_latest_csv()
             
@@ -555,9 +555,6 @@ class EnhancedChatHandler:
             chart_source = None  # Will be "vanna_ai_tool", "auto_generated", or None
             tool_used = False
             tool_success = False
-            
-            # Track CSV filename from agent text output
-            captured_csv_filename = None
             
             # We'll capture all components to analyze tool usage
             components = []
@@ -578,21 +575,6 @@ class EnhancedChatHandler:
                     text = component.simple_component.text
                     response_text += text + "\n"
                     logger.debug(f"  Added text: {text[:100]}...")
-                    
-                    # Check for CSV filename in text output
-                    # Look for patterns like "Results saved to file: query_results_3d6ebedc.csv"
-                    # or "Saved to file: query_results_3d6ebedc.csv"
-                    csv_match = re.search(r'(?:Results saved to file:|Saved to file:|saved to file:)\s*([\w\-_]+\.csv)', text)
-                    if csv_match and not captured_csv_filename:
-                        captured_csv_filename = csv_match.group(1)
-                        logger.info(f"Captured CSV filename from agent text: {captured_csv_filename}")
-                    
-                    # Also look for CSV files mentioned in the text (more generic pattern)
-                    if not captured_csv_filename:
-                        csv_file_match = re.search(r'([\w\-_]+\.csv)', text)
-                        if csv_file_match and 'query_results' in csv_file_match.group(1):
-                            captured_csv_filename = csv_file_match.group(1)
-                            logger.info(f"Captured CSV filename from generic pattern: {captured_csv_filename}")
                 
                 # Check if this is a tool call component
                 if hasattr(component, 'tool_call_component'):
@@ -649,35 +631,12 @@ class EnhancedChatHandler:
             logger.info(f"Processed {component_count} components from agent")
             
             # Check if a new CSV was generated
-            # First, try to use the captured CSV filename from agent text output
-            if captured_csv_filename:
-                # Try to find the captured CSV file
-                captured_csv_path = self._find_csv_by_filename(captured_csv_filename)
-                if captured_csv_path:
-                    csv_path = captured_csv_path
-                    logger.info(f"Using captured CSV filename: {captured_csv_filename} -> {csv_path}")
-                else:
-                    # If not found by exact filename, try to find it in query_results directory
-                    query_results_dir = Path("./query_results")
-                    if query_results_dir.exists():
-                        potential_csv = query_results_dir / captured_csv_filename
-                        if potential_csv.exists():
-                            csv_path = str(potential_csv.absolute())
-                            logger.info(f"Found captured CSV in query_results directory: {csv_path}")
-                        else:
-                            logger.warning(f"Captured CSV filename '{captured_csv_filename}' not found in query_results directory")
-            
-            # If we don't have a CSV path from captured filename, fall back to latest file detection
-            if not csv_path:
-                csv_after = self._find_latest_csv()
-                if csv_after and csv_after != csv_before:
-                    csv_path = csv_after
-                    logger.info(f"Using latest CSV file: {csv_path}")
-            
-            if csv_path:
+            csv_after = self._find_latest_csv()
+            if csv_after and csv_after != csv_before:
+                csv_path = csv_after
                 tool_success = True
                 tool_used = True  # CSV was generated, so a tool was used
-                logger.info(f"CSV file determined: {csv_path}")
+                logger.info(f"New CSV generated: {csv_path}")
 
                 # If we have SQL, execute it to get the dataframe for CSV generation
                 if sql_query:
@@ -1026,40 +985,15 @@ class EnhancedChatHandler:
         logger.debug("No SQL found in response text")
         return ""
     
-    def _find_latest_csv(self, max_age_seconds: int = 30) -> Optional[str]:
-        """Find the latest CSV file in the results directory (search recursively)
-        
-        Args:
-            max_age_seconds: Only return CSV files modified within this time window
-                             to reduce race conditions with other queries
-        """
+    def _find_latest_csv(self) -> Optional[str]:
+        """Find the latest CSV file in the results directory (search recursively)"""
         try:
-            import time
-            current_time = time.time()
-            
             # Search for CSV files in the current directory and all subdirectories
             csv_files = list(Path(".").glob("**/*.csv"))
             if not csv_files:
                 return None
-            
-            # Filter files by modification time (only recent files)
-            recent_csv_files = []
-            for csv_file in csv_files:
-                try:
-                    mtime = csv_file.stat().st_mtime
-                    age_seconds = current_time - mtime
-                    if age_seconds <= max_age_seconds:
-                        recent_csv_files.append((csv_file, mtime))
-                except Exception as e:
-                    logger.debug(f"Error checking file {csv_file}: {e}")
-                    continue
-            
-            if not recent_csv_files:
-                return None
-            
-            # Get the most recently modified CSV file among recent files
-            latest_csv, _ = max(recent_csv_files, key=lambda x: x[1])
-            
+            # Get the most recently modified CSV file
+            latest_csv = max(csv_files, key=lambda x: x.stat().st_mtime)
             # Return absolute path
             return str(latest_csv.absolute())
         except Exception as e:
@@ -1198,25 +1132,6 @@ class EnhancedChatHandler:
         
         return False
     
-    def _find_csv_by_filename(self, filename: str) -> Optional[str]:
-        """Find a CSV file by filename (search recursively)"""
-        try:
-            # Search for CSV files with the given filename in all subdirectories
-            csv_files = list(Path(".").glob(f"**/{filename}"))
-            if csv_files:
-                # Return the first matching CSV file (should be unique)
-                return str(csv_files[0].absolute())
-            
-            # If not found with exact match, try case-insensitive search
-            for csv_file in Path(".").glob("**/*.csv"):
-                if csv_file.name.lower() == filename.lower():
-                    return str(csv_file.absolute())
-            
-            return None
-        except Exception as e:
-            logger.error(f"Error finding CSV by filename '{filename}': {e}")
-            return None
-    
     def _get_csv_path_for_request(self, request_id: str) -> Optional[str]:
         """Get CSV path for a specific request using request ID"""
         try:
@@ -1273,19 +1188,19 @@ def create_app() -> FastAPI:
     # Get the base app
     app = vanna_server.create_app()
 
-    # Remove the base server's SSE and poll endpoints so our custom endpoints can take precedence
-    # Find and remove the POST /api/vanna/v2/chat_sse and /api/vanna/v2/chat_poll routes from base server
+    # Remove the base server's SSE endpoint so our custom endpoint can take precedence
+    # Find and remove the POST /api/vanna/v2/chat_sse route from base server
     routes_to_remove = []
     for i, route in enumerate(app.routes):
-        if hasattr(route, 'path') and route.path in ["/api/vanna/v2/chat_sse", "/api/vanna/v2/chat_poll"]:
+        if hasattr(route, 'path') and route.path == "/api/vanna/v2/chat_sse":
             if hasattr(route, 'methods') and 'POST' in route.methods:
                 routes_to_remove.append(i)
-                logger.info(f"Found base server endpoint at index {i}: {route.path}, will remove it")
+                logger.info(f"Found base server SSE endpoint at index {i}, will remove it")
     
     # Remove routes in reverse order to avoid index issues
     for i in sorted(routes_to_remove, reverse=True):
         removed_route = app.routes.pop(i)
-        logger.info(f"Removed base server endpoint: {removed_route.path}")
+        logger.info(f"Removed base server SSE endpoint: {removed_route.path}")
 
     # --- Request logging (similar visibility to the old TUI logs) ---
 
@@ -1411,19 +1326,10 @@ def create_app() -> FastAPI:
                 try:
                     # Send initial event
                     yield f"data: {json.dumps({'event': 'start', 'timestamp': datetime.now().isoformat() + 'Z'})}\n\n"
-
+                    
                     response_text = ""
                     sql_query = ""
-                    captured_csv_filename = None
                     
-                    # Track CSV before query (for time window detection)
-                    csv_before = None
-                    try:
-                        # Use the enhanced handler's method to find latest CSV
-                        csv_before = app.state.enhanced_handler._find_latest_csv()
-                    except Exception as e:
-                        logger.debug(f"Error finding initial CSV: {e}")
-
                     # Stream agent response
                     async for component in agent.send_message(
                         request_context=request_context,
@@ -1435,21 +1341,7 @@ def create_app() -> FastAPI:
                             response_text += text
                             # Send text chunk as event with event: chunk line
                             yield f"event: chunk\ndata: {json.dumps({'event': 'chunk', 'text': text})}\n\n"
-                            
-                            # Check for CSV filename in text output
-                            # Look for patterns like "Results saved to file: query_results_3d6ebedc.csv"
-                            csv_match = re.search(r'(?:Results saved to file:|Saved to file:|saved to file:)\s*([\w\-_]+\.csv)', text)
-                            if csv_match and not captured_csv_filename:
-                                captured_csv_filename = csv_match.group(1)
-                                logger.info(f"Captured CSV filename from agent text in SSE: {captured_csv_filename}")
-                            
-                            # Also look for CSV files mentioned in the text (more generic pattern)
-                            if not captured_csv_filename:
-                                csv_file_match = re.search(r'([\w\-_]+\.csv)', text)
-                                if csv_file_match and 'query_results' in csv_file_match.group(1):
-                                    captured_csv_filename = csv_file_match.group(1)
-                                    logger.info(f"Captured CSV filename from generic pattern in SSE: {captured_csv_filename}")
-
+                        
                         # Check for tool calls
                         if hasattr(component, 'tool_call_component'):
                             tool_call = component.tool_call_component
@@ -1457,69 +1349,21 @@ def create_app() -> FastAPI:
                                 if hasattr(tool_call, 'args') and 'sql' in tool_call.args:
                                     sql_query = tool_call.args['sql']
                                     yield f"event: sql\ndata: {json.dumps({'event': 'sql', 'sql': sql_query})}\n\n"
-
+                    
                     # After streaming complete, check for CSV generation
                     csv_path = None
-                    
-                    # First, try to use the captured CSV filename from agent text output
-                    if captured_csv_filename:
-                        # Try to find the captured CSV file using enhanced handler's method
-                        try:
-                            captured_csv_path = app.state.enhanced_handler._find_csv_by_filename(captured_csv_filename)
-                            if captured_csv_path:
-                                csv_path = captured_csv_path
-                                logger.info(f"Using captured CSV filename in SSE: {captured_csv_filename} -> {csv_path}")
-                            else:
-                                # If not found by exact filename, try to find it in query_results directory
-                                query_results_dir = Path("./query_results")
-                                if query_results_dir.exists():
-                                    potential_csv = query_results_dir / captured_csv_filename
-                                    if potential_csv.exists():
-                                        csv_path = str(potential_csv.absolute())
-                                        logger.info(f"Found captured CSV in query_results directory in SSE: {csv_path}")
-                                    else:
-                                        logger.warning(f"Captured CSV filename '{captured_csv_filename}' not found in query_results directory in SSE")
-                        except Exception as e:
-                            logger.error(f"Error finding CSV by filename in SSE: {e}")
-                    
-                    # If we don't have a CSV path from captured filename, fall back to latest file detection
-                    if not csv_path:
-                        try:
-                            csv_after = app.state.enhanced_handler._find_latest_csv(max_age_seconds=30)
-                            if csv_after and csv_after != csv_before:
-                                csv_path = csv_after
-                                logger.info(f"Using latest CSV file in SSE: {csv_path}")
-                        except Exception as e:
-                            logger.error(f"Error finding latest CSV in SSE: {e}")
-                    
-                    # If we have SQL but no CSV path from above, try to execute SQL to generate CSV
-                    if sql_query and not csv_path:
+                    if sql_query:
                         try:
                             df = sql_runner.run_sql(sql_query)
                             if not df.empty:
                                 import hashlib
                                 query_hash = hashlib.md5(sql_query.encode()).hexdigest()
                                 csv_path = csv_manager.save_query_results(df, query_hash)
-                                logger.info(f"Generated CSV from SQL in SSE: {csv_path}")
+                                csv_url = csv_manager.get_csv_url(csv_path)
+                                yield f"event: csv\ndata: {json.dumps({'event': 'csv', 'url': csv_url})}\n\n"
                         except Exception as e:
                             logger.error(f"Error executing SQL for SSE: {e}")
                     
-                    # If we still don't have SQL but have response text, try to extract SQL from text
-                    if not sql_query and response_text:
-                        try:
-                            # Use enhanced handler's SQL extraction method
-                            extracted_sql = app.state.enhanced_handler._extract_sql_from_response(response_text)
-                            if extracted_sql:
-                                sql_query = extracted_sql
-                                logger.info(f"Extracted SQL from response text in SSE: {sql_query[:100]}...")
-                        except Exception as e:
-                            logger.error(f"Error extracting SQL from response text in SSE: {e}")
-                    
-                    # Send CSV event if we have a CSV path
-                    if csv_path:
-                        csv_url = csv_manager.get_csv_url(csv_path)
-                        yield f"event: csv\ndata: {json.dumps({'event': 'csv', 'url': csv_url})}\n\n"
-
                     # Send completion event with event: complete line
                     yield f"event: complete\ndata: {json.dumps({'event': 'complete', 'answer': response_text, 'sql': sql_query, 'csv_url': csv_manager.get_csv_url(csv_path) if csv_path else None})}\n\n"
 
