@@ -1188,6 +1188,20 @@ def create_app() -> FastAPI:
     # Get the base app
     app = vanna_server.create_app()
 
+    # Remove the base server's SSE endpoint so our custom endpoint can take precedence
+    # Find and remove the POST /api/vanna/v2/chat_sse route from base server
+    routes_to_remove = []
+    for i, route in enumerate(app.routes):
+        if hasattr(route, 'path') and route.path == "/api/vanna/v2/chat_sse":
+            if hasattr(route, 'methods') and 'POST' in route.methods:
+                routes_to_remove.append(i)
+                logger.info(f"Found base server SSE endpoint at index {i}, will remove it")
+    
+    # Remove routes in reverse order to avoid index issues
+    for i in sorted(routes_to_remove, reverse=True):
+        removed_route = app.routes.pop(i)
+        logger.info(f"Removed base server SSE endpoint: {removed_route.path}")
+
     # --- Request logging (similar visibility to the old TUI logs) ---
 
     @app.middleware("http")
@@ -1224,22 +1238,6 @@ def create_app() -> FastAPI:
         """
         await learning_manager.ensure_patterns_loaded()
     
-    @app.post("/api/v1/chat")
-    async def chat_endpoint_v1(request: Request):
-        """Simple chat endpoint that returns sql + csv link + answer"""
-        try:
-            request_data = await request.json()
-            message = request_data.get("message", "")
-            
-            if not message:
-                raise HTTPException(status_code=400, detail="Message is required")
-            
-            # Use the enhanced handler
-            response = await enhanced_handler.handle_chat_request(request_data)
-            return JSONResponse(content=response)
-        except Exception as e:
-            logger.error(f"Error in chat endpoint v1: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
     
     @app.get("/api/v1/learning/stats")
     async def get_learning_stats():
@@ -1327,7 +1325,7 @@ def create_app() -> FastAPI:
                 """Generate Server-Sent Events"""
                 try:
                     # Send initial event
-                    yield f"data: {json.dumps({'event': 'start', 'timestamp': datetime.now().isoformat()})}\n\n"
+                    yield f"data: {json.dumps({'event': 'start', 'timestamp': datetime.now().isoformat() + 'Z'})}\n\n"
                     
                     response_text = ""
                     sql_query = ""
@@ -1341,8 +1339,8 @@ def create_app() -> FastAPI:
                         if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
                             text = component.simple_component.text
                             response_text += text
-                            # Send text chunk as event
-                            yield f"data: {json.dumps({'event': 'chunk', 'text': text})}\n\n"
+                            # Send text chunk as event with event: chunk line
+                            yield f"event: chunk\ndata: {json.dumps({'event': 'chunk', 'text': text})}\n\n"
                         
                         # Check for tool calls
                         if hasattr(component, 'tool_call_component'):
@@ -1350,7 +1348,7 @@ def create_app() -> FastAPI:
                             if hasattr(tool_call, 'tool_name') and tool_call.tool_name == 'run_sql':
                                 if hasattr(tool_call, 'args') and 'sql' in tool_call.args:
                                     sql_query = tool_call.args['sql']
-                                    yield f"data: {json.dumps({'event': 'sql', 'sql': sql_query})}\n\n"
+                                    yield f"event: sql\ndata: {json.dumps({'event': 'sql', 'sql': sql_query})}\n\n"
                     
                     # After streaming complete, check for CSV generation
                     csv_path = None
@@ -1362,12 +1360,12 @@ def create_app() -> FastAPI:
                                 query_hash = hashlib.md5(sql_query.encode()).hexdigest()
                                 csv_path = csv_manager.save_query_results(df, query_hash)
                                 csv_url = csv_manager.get_csv_url(csv_path)
-                                yield f"data: {json.dumps({'event': 'csv', 'url': csv_url})}\n\n"
+                                yield f"event: csv\ndata: {json.dumps({'event': 'csv', 'url': csv_url})}\n\n"
                         except Exception as e:
                             logger.error(f"Error executing SQL for SSE: {e}")
                     
-                    # Send completion event
-                    yield f"data: {json.dumps({'event': 'complete', 'answer': response_text, 'sql': sql_query, 'csv_url': csv_manager.get_csv_url(csv_path) if csv_path else None})}\n\n"
+                    # Send completion event with event: complete line
+                    yield f"event: complete\ndata: {json.dumps({'event': 'complete', 'answer': response_text, 'sql': sql_query, 'csv_url': csv_manager.get_csv_url(csv_path) if csv_path else None})}\n\n"
 
                     # Store conversation after completion (scoped by user + conversation)
                     await app.state.conversation_store.save_conversation_turn(
@@ -1385,7 +1383,7 @@ def create_app() -> FastAPI:
                     
                 except Exception as e:
                     logger.error(f"Error in SSE stream: {e}")
-                    yield f"data: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
+                    yield f"event: error\ndata: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
             
             return StreamingResponse(
                 event_stream(),

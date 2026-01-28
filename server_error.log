@@ -1,0 +1,48 @@
+2026-01-28 11:37:45,904 [VANNA API] INFO: Initialized Agent
+2026-01-28 11:37:45,905 [VANNA API] INFO: Loaded 11 golden queries from golden_queries.json
+2026-01-28 11:37:45,906 [VANNA API] INFO: Loaded conversation history from conversation_history.json
+2026-01-28 11:37:45,917 [VANNA API] INFO: Found base server SSE endpoint at index 5, will remove it
+2026-01-28 11:37:45,918 [VANNA API] INFO: Removed base server SSE endpoint: /api/vanna/v2/chat_sse
+/home/m9x/SRC/vanna-ai-app/api.py:1232: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+2026-01-28 11:37:46,432 [VANNA API] INFO: Loaded 2 query patterns and 24 tool patterns
+2026-01-28 11:37:46,432 [VANNA API] INFO: Loaded 2 query patterns
+INFO:     Started server process [35468]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+2026-01-28 11:38:05,433 [VANNA API] INFO: POST /api/vanna/v2/chat_sse
+2026-01-28 11:38:05,440 [VANNA API] INFO: POST /api/vanna/v2/chat_sse -> 200
+INFO:     127.0.0.1:60582 - "POST /api/vanna/v2/chat_sse HTTP/1.1" 200 OK
+2026-01-28 11:38:26,589 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 11:38:29,737 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 11:38:29,813 [VANNA API] INFO: Starting visualization for file: query_results_acb11a4d.csv
+2026-01-28 11:38:29,814 [VANNA API] INFO: Read 14045 bytes from CSV file
+2026-01-28 11:38:29,820 [VANNA API] INFO: Parsed DataFrame with shape (122, 13), columns: ['customerNumber', 'customerName', 'contactLastName', 'contactFirstName', 'phone', 'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country', 'salesRepEmployeeNumber', 'creditLimit'], dtypes: {'customerNumber': dtype('int64'), 'customerName': <StringDtype(storage='python', na_value=nan)>, 'contactLastName': <StringDtype(storage='python', na_value=nan)>, 'contactFirstName': <StringDtype(storage='python', na_value=nan)>, 'phone': <StringDtype(storage='python', na_value=nan)>, 'addressLine1': <StringDtype(storage='python', na_value=nan)>, 'addressLine2': <StringDtype(storage='python', na_value=nan)>, 'city': <StringDtype(storage='python', na_value=nan)>, 'state': <StringDtype(storage='python', na_value=nan)>, 'postalCode': <StringDtype(storage='python', na_value=nan)>, 'country': <StringDtype(storage='python', na_value=nan)>, 'salesRepEmployeeNumber': dtype('float64'), 'creditLimit': dtype('float64')}
+2026-01-28 11:38:29,821 [VANNA API] INFO: Generating chart...
+2026-01-28 11:38:29,931 [VANNA API] INFO: Chart generated, type: <class 'dict'>, keys: ['data', 'layout']
+2026-01-28 11:38:29,931 [VANNA API] INFO: Creating ChartComponent...
+2026-01-28 11:38:29,931 [VANNA API] INFO: ChartComponent created successfully
+2026-01-28 11:38:29,931 [VANNA API] INFO: Creating ToolResult...
+2026-01-28 11:38:29,931 [VANNA API] INFO: ToolResult created successfully
+2026-01-28 11:38:31,476 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 11:51:05,415 [VANNA API] INFO: POST /api/vanna/v2/chat_sse
+2026-01-28 11:51:05,417 [VANNA API] INFO: POST /api/vanna/v2/chat_sse -> 200
+INFO:     127.0.0.1:38106 - "POST /api/vanna/v2/chat_sse HTTP/1.1" 200 OK
+2026-01-28 11:51:15,080 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 11:51:16,719 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-01-28 11:51:16,740 [VANNA API] INFO: Starting visualization for file: query_results_3d6ebedc.csv
+2026-01-28 11:51:16,741 [VANNA API] INFO: Read 14045 bytes from CSV file
+2026-01-28 11:51:16,747 [VANNA API] INFO: Parsed DataFrame with shape (122, 13), columns: ['customerNumber', 'customerName', 'contactLastName', 'contactFirstName', 'phone', 'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country', 'salesRepEmployeeNumber', 'creditLimit'], dtypes: {'customerNumber': dtype('int64'), 'customerName': <StringDtype(storage='python', na_value=nan)>, 'contactLastName': <StringDtype(storage='python', na_value=nan)>, 'contactFirstName': <StringDtype(storage='python', na_value=nan)>, 'phone': <StringDtype(storage='python', na_value=nan)>, 'addressLine1': <StringDtype(storage='python', na_value=nan)>, 'addressLine2': <StringDtype(storage='python', na_value=nan)>, 'city': <StringDtype(storage='python', na_value=nan)>, 'state': <StringDtype(storage='python', na_value=nan)>, 'postalCode': <StringDtype(storage='python', na_value=nan)>, 'country': <StringDtype(storage='python', na_value=nan)>, 'salesRepEmployeeNumber': dtype('float64'), 'creditLimit': dtype('float64')}
+2026-01-28 11:51:16,747 [VANNA API] INFO: Generating chart...
+2026-01-28 11:51:16,793 [VANNA API] INFO: Chart generated, type: <class 'dict'>, keys: ['data', 'layout']
+2026-01-28 11:51:16,794 [VANNA API] INFO: Creating ChartComponent...
+2026-01-28 11:51:16,794 [VANNA API] INFO: ChartComponent created successfully
+2026-01-28 11:51:16,794 [VANNA API] INFO: Creating ToolResult...
+2026-01-28 11:51:16,794 [VANNA API] INFO: ToolResult created successfully
+2026-01-28 11:51:18,152 [VANNA API] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
