@@ -928,6 +928,20 @@
         "chart_source": "forced_after_visualize_tool",
         "tool_success": true
       }
+    },
+    {
+      "conversation_id": "default",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-29T09:13:14.440384",
+      "question": "Geef overzicht van leverancier Thermokey",
+      "response": "Error: An unexpected error occurred. Please try again.",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
     }
   ],
   "test_user|default": [
@@ -11469,6 +11483,182 @@
         },
         "chart_source": "forced_after_visualize_tool",
         "tool_success": true
+      }
+    }
+  ],
+  "curl_test_user|test-sse-curl-123": [
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T09:19:15.433487",
+      "question": "Show me all customers",
+      "response": "Error: An unexpected error occurred. Please try again. (Conversation ID: test-sse-curl-123)",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T09:50:54.274805",
+      "question": "Show me all customers",
+      "response": "Error: An unexpected error occurred. Please try again. (Conversation ID: test-sse-curl-123)",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T11:13:16.932521",
+      "question": "Show me all customers",
+      "response": "",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T11:13:53.993325",
+      "question": "Show me all customers",
+      "response": "",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T11:14:12.547546",
+      "question": "Show me all customers",
+      "response": "",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "curl_test_user",
+      "username": "curl_tester",
+      "timestamp": "2026-01-30T11:57:45.134520",
+      "question": "Show me all customers",
+      "response": "Error: An unexpected error occurred. Please try again. (Conversation ID: test-sse-curl-123)",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    }
+  ],
+  "api_user|test-sse-curl-123": [
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-30T10:20:58.051984",
+      "question": "Show me all customers",
+      "response": "Error: An unexpected error occurred. Please try again. (Conversation ID: test-sse-curl-123)",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-30T11:16:39.889762",
+      "question": "Show me all customers",
+      "response": "",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-30T12:51:34.175336",
+      "question": "Show me all customers",
+      "response": "It seems there was an error with the database query related to authentication. The system requires the 'cryptography' package to handle certain authentication methods.\n\nTo proceed with retrieving customer information, please ensure that the necessary dependencies are installed and configured correctly in the system. Once resolved, I can assist you further in extracting and analyzing the customer data. Let me know if you need help with anything else in the meantime!",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "with the database query related to authentication. The system requires the 'cryptography' package to handle certain authentication methods",
+        "csv_generated": false
+      }
+    },
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-30T12:59:48.500313",
+      "question": "Show me all customers",
+      "response": "Query executed successfully. 13 row(s) affected.It seems there are still issues with the column names. Let's identify and try one more time to fix the errors. Would you like me to find out the correct column names for the required fields like customer name, contact information, and location?",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "with the column names. Let's identify and try one more time to fix the errors. Would you like me to find out the correct column names for the required fields like customer name, contact information, and location?",
+        "csv_generated": false
+      }
+    }
+  ],
+  "api_user|test-sse-curl-fix": [
+    {
+      "conversation_id": "test-sse-curl-fix",
+      "user_id": "api_user",
+      "username": "api_user",
+      "timestamp": "2026-01-30T12:59:17.724646",
+      "question": "Show me all customers",
+      "response": "customerNumber,customerName,contactLastName,contactFirstName,phone,addressLine1,addressLine2,city,state,postalCode,country,salesRepEmployeeNumber,creditLimit\n103,Atelier graphique,Schmitt,Carine ,40.32.2555,\"54, rue Royale\",,Nantes,,44000,France,1370.0,21000.00\n112,Signal Gift Stores,King,Jean,7025551838,8489 Strong St.,,Las Vegas,NV,83030,USA,1166.0,71800.00\n114,\"Australian Collectors, Co.\",Ferguson,Peter,03 9520 4555,636 St Kilda Road,Level 3,Melbourne,Victoria,3004,Australia,1611.0,117300.00\n119,La Rochelle Gifts,Labrune,Janine ,40.67.8555,\"67, rue des Cinquante Otages\",,Nantes,,44000,France,1370.0,118200.00\n121,Baane Mini Imports,Bergulfsen,Jonas ,07-98 9555,Erling Skakkes gate 78,,Stavern,,4110,Norway,1504.0,81700.00\n124,Mini Gifts Distributors Ltd.,Nelson,Susan,4155551450,5677 Strong St.,,San Rafael,CA,97562,USA,1165.0,210500.00\n125,Havel & Zbyszek Co,Piestrzeniewicz,Zbyszek ,(26) 642-7555,ul. Filtrowa 68,,Warszawa,,01-012,Poland,,0.00\n128,\"Blauer See Auto, Co.\",Keitel,Roland,+49\n(Results truncated to 1000 characters. FOR LARGE RESULTS YOU DO NOT NEED TO SUMMARIZE THESE RESULTS OR PROVIDE OBSERVATIONS. THE NEXT STEP SHOULD BE A VISUALIZE_DATA CALL)\n\nResults saved to file: query_results_07f691dc.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_07f691dc.csv**Created visualization from 'query_results_07f691dc.csv' (122 rows, 13 columns).I retrieved customer data, including their contact details, location, sales representative (and email), and credit limit. I then visualized this information for an overview. If you need any specific filters applied or require the data to be exported in a different format, let me know!",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": true
+      }
+    }
+  ],
+  "anonymous|test-sse-curl-123": [
+    {
+      "conversation_id": "test-sse-curl-123",
+      "user_id": "anonymous",
+      "username": "anonymous",
+      "timestamp": "2026-01-30T13:19:26.477444",
+      "question": "Show me all customers",
+      "response": "customerNumber,customerName,contactLastName,contactFirstName,phone,addressLine1,addressLine2,city,state,postalCode,country,salesRepEmployeeNumber,creditLimit\n103,Atelier graphique,Schmitt,Carine ,40.32.2555,\"54, rue Royale\",,Nantes,,44000,France,1370.0,21000.00\n112,Signal Gift Stores,King,Jean,7025551838,8489 Strong St.,,Las Vegas,NV,83030,USA,1166.0,71800.00\n114,\"Australian Collectors, Co.\",Ferguson,Peter,03 9520 4555,636 St Kilda Road,Level 3,Melbourne,Victoria,3004,Australia,1611.0,117300.00\n119,La Rochelle Gifts,Labrune,Janine ,40.67.8555,\"67, rue des Cinquante Otages\",,Nantes,,44000,France,1370.0,118200.00\n121,Baane Mini Imports,Bergulfsen,Jonas ,07-98 9555,Erling Skakkes gate 78,,Stavern,,4110,Norway,1504.0,81700.00\n124,Mini Gifts Distributors Ltd.,Nelson,Susan,4155551450,5677 Strong St.,,San Rafael,CA,97562,USA,1165.0,210500.00\n125,Havel & Zbyszek Co,Piestrzeniewicz,Zbyszek ,(26) 642-7555,ul. Filtrowa 68,,Warszawa,,01-012,Poland,,0.00\n128,\"Blauer See Auto, Co.\",Keitel,Roland,+49\n(Results truncated to 1000 characters. FOR LARGE RESULTS YOU DO NOT NEED TO SUMMARIZE THESE RESULTS OR PROVIDE OBSERVATIONS. THE NEXT STEP SHOULD BE A VISUALIZE_DATA CALL)\n\nResults saved to file: query_results_32182979.csv\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: query_results_32182979.csv**Created visualization from 'query_results_32182979.csv' (122 rows, 13 columns).I've retrieved the customer data and created a visualization titled \"Customer Overview.\" This visualization should help you quickly browse through the information about customers, including their contact details, location, sales representatives, and credit limits. If you need further filtering or analysis, please let me know!",
+      "type": "conversation",
+      "metadata": {
+        "sse": true,
+        "sql_query": "",
+        "csv_generated": true
       }
     }
   ]

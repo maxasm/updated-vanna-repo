@@ -4,3 +4,4 @@ pandas
 chromadb
 fastapi
 uvicorn
+cryptography

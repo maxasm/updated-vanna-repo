@@ -39,6 +39,9 @@ from learning_manager import LearningManager
 # Golden Query Manager
 from golden_query_manager import get_golden_query_manager
 
+# SSE Endpoint Handler
+from chat_sse_endpoint import SSEChatEndpoint
+
 # Import VannaFastAPIServer for base functionality
 from vanna.servers.fastapi import VannaFastAPIServer
 
@@ -65,7 +68,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY environment variable is required")
 
-llm = OpenAILlmService(api_key=api_key, model="gpt-5")
+llm = OpenAILlmService(api_key=api_key, model="gpt-4o")
 
 memory = ChromaAgentMemory(
     persist_directory="./chroma_memory",
@@ -1366,191 +1369,24 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Error in training: {e}")
             raise HTTPException(status_code=500, detail=str(e))
-    
-    # --- NEW V2 ENDPOINTS ---
-    
     @app.post("/api/vanna/v2/chat_sse")
     async def chat_sse_endpoint(request: Request):
-        """Server-Sent Events streaming chat endpoint"""
         try:
-            request_data = await request.json()
-            message = request_data.get("message", "")
+            # Use the new SSE Chat Endpoint handler
+            from chat_sse_endpoint import SSEChatEndpoint
             
-            if not message:
-                raise HTTPException(status_code=400, detail="Message is required")
+            # Initialize handler if not already present in app state
+            if not hasattr(app.state, 'sse_handler'):
+                app.state.sse_handler = SSEChatEndpoint(
+                    agent=agent,
+                    sql_runner=sql_runner,
+                    csv_manager=csv_manager,
+                    conversation_store=app.state.conversation_store,
+                    conversation_enhancer=app.state.conversation_enhancer,
+                    learning_manager=learning_manager
+                )
             
-            headers = request_data.get("headers", {})
-            user_identifier = (
-                headers.get("x-user-id")
-                or headers.get("x-user-identifier")
-                or request_data.get("user_identifier")
-                or request_data.get("user_id")
-                or "api_user"
-            )
-            conversation_id = (
-                headers.get("x-conversation-id")
-                or headers.get("x-conversation")
-                or request_data.get("conversation_id")
-                or (request_data.get("metadata") or {}).get("conversation_id")
-            )
-
-            # Create request context
-            request_context = RequestContext(
-                headers=headers,
-                metadata=request_data.get("metadata", {})
-            )
-            
-            # Enhance question with learned patterns + conversation context
-            learned = learning_manager.enhance_question_with_learned_patterns(message)
-            enhanced_question = await app.state.conversation_enhancer.enhance_question_with_context(
-                learned, user_identifier=user_identifier, conversation_id=conversation_id
-            )
-            
-            async def event_stream():
-                """Generate Server-Sent Events"""
-                try:
-                    # Send initial event
-                    yield f"data: {json.dumps({'event': 'start', 'timestamp': datetime.now().isoformat() + 'Z'})}\n\n"
-
-                    response_text = ""
-                    sql_query = ""
-                    captured_csv_filename = None
-                    
-                    # Track CSV before query (for time window detection)
-                    csv_before = None
-                    try:
-                        # Use the enhanced handler's method to find latest CSV
-                        csv_before = app.state.enhanced_handler._find_latest_csv()
-                    except Exception as e:
-                        logger.debug(f"Error finding initial CSV: {e}")
-
-                    # Stream agent response
-                    async for component in agent.send_message(
-                        request_context=request_context,
-                        message=enhanced_question,
-                        conversation_id=conversation_id,
-                    ):
-                        if hasattr(component, 'simple_component') and hasattr(component.simple_component, 'text'):
-                            text = component.simple_component.text
-                            response_text += text
-                            # Send text chunk as event with event: chunk line
-                            yield f"event: chunk\ndata: {json.dumps({'event': 'chunk', 'text': text})}\n\n"
-                            
-                            # Check for CSV filename in text output
-                            # Look for patterns like "Results saved to file: query_results_3d6ebedc.csv"
-                            csv_match = re.search(r'(?:Results saved to file:|Saved to file:|saved to file:)\s*([\w\-_]+\.csv)', text)
-                            if csv_match and not captured_csv_filename:
-                                captured_csv_filename = csv_match.group(1)
-                                logger.info(f"Captured CSV filename from agent text in SSE: {captured_csv_filename}")
-                            
-                            # Also look for CSV files mentioned in the text (more generic pattern)
-                            if not captured_csv_filename:
-                                csv_file_match = re.search(r'([\w\-_]+\.csv)', text)
-                                if csv_file_match and 'query_results' in csv_file_match.group(1):
-                                    captured_csv_filename = csv_file_match.group(1)
-                                    logger.info(f"Captured CSV filename from generic pattern in SSE: {captured_csv_filename}")
-
-                        # Check for tool calls
-                        if hasattr(component, 'tool_call_component'):
-                            tool_call = component.tool_call_component
-                            if hasattr(tool_call, 'tool_name') and tool_call.tool_name == 'run_sql':
-                                if hasattr(tool_call, 'args') and 'sql' in tool_call.args:
-                                    sql_query = tool_call.args['sql']
-                                    yield f"event: sql\ndata: {json.dumps({'event': 'sql', 'sql': sql_query})}\n\n"
-
-                    # After streaming complete, check for CSV generation
-                    csv_path = None
-                    
-                    # First, try to use the captured CSV filename from agent text output
-                    if captured_csv_filename:
-                        # Try to find the captured CSV file using enhanced handler's method
-                        try:
-                            captured_csv_path = app.state.enhanced_handler._find_csv_by_filename(captured_csv_filename)
-                            if captured_csv_path:
-                                csv_path = captured_csv_path
-                                logger.info(f"Using captured CSV filename in SSE: {captured_csv_filename} -> {csv_path}")
-                            else:
-                                # If not found by exact filename, try to find it in query_results directory
-                                query_results_dir = Path("./query_results")
-                                if query_results_dir.exists():
-                                    potential_csv = query_results_dir / captured_csv_filename
-                                    if potential_csv.exists():
-                                        csv_path = str(potential_csv.absolute())
-                                        logger.info(f"Found captured CSV in query_results directory in SSE: {csv_path}")
-                                    else:
-                                        logger.warning(f"Captured CSV filename '{captured_csv_filename}' not found in query_results directory in SSE")
-                        except Exception as e:
-                            logger.error(f"Error finding CSV by filename in SSE: {e}")
-                    
-                    # If we don't have a CSV path from captured filename, fall back to latest file detection
-                    if not csv_path:
-                        try:
-                            csv_after = app.state.enhanced_handler._find_latest_csv(max_age_seconds=30)
-                            if csv_after and csv_after != csv_before:
-                                csv_path = csv_after
-                                logger.info(f"Using latest CSV file in SSE: {csv_path}")
-                        except Exception as e:
-                            logger.error(f"Error finding latest CSV in SSE: {e}")
-                    
-                    # If we have SQL but no CSV path from above, try to execute SQL to generate CSV
-                    if sql_query and not csv_path:
-                        try:
-                            df = sql_runner.run_sql(sql_query)
-                            if not df.empty:
-                                import hashlib
-                                query_hash = hashlib.md5(sql_query.encode()).hexdigest()
-                                csv_path = csv_manager.save_query_results(df, query_hash)
-                                logger.info(f"Generated CSV from SQL in SSE: {csv_path}")
-                        except Exception as e:
-                            logger.error(f"Error executing SQL for SSE: {e}")
-                    
-                    # If we still don't have SQL but have response text, try to extract SQL from text
-                    if not sql_query and response_text:
-                        try:
-                            # Use enhanced handler's SQL extraction method
-                            extracted_sql = app.state.enhanced_handler._extract_sql_from_response(response_text)
-                            if extracted_sql:
-                                sql_query = extracted_sql
-                                logger.info(f"Extracted SQL from response text in SSE: {sql_query[:100]}...")
-                        except Exception as e:
-                            logger.error(f"Error extracting SQL from response text in SSE: {e}")
-                    
-                    # Send CSV event if we have a CSV path
-                    if csv_path:
-                        csv_url = csv_manager.get_csv_url(csv_path)
-                        yield f"event: csv\ndata: {json.dumps({'event': 'csv', 'url': csv_url})}\n\n"
-
-                    # Send completion event with event: complete line
-                    yield f"event: complete\ndata: {json.dumps({'event': 'complete', 'answer': response_text, 'sql': sql_query, 'csv_url': csv_manager.get_csv_url(csv_path) if csv_path else None})}\n\n"
-
-                    # Store conversation after completion (scoped by user + conversation)
-                    await app.state.conversation_store.save_conversation_turn(
-                        question=message,
-                        response=response_text,
-                        user_identifier=user_identifier,
-                        username=headers.get("x-username") or str(user_identifier),
-                        conversation_id=conversation_id,
-                        metadata={
-                            "sse": True,
-                            "sql_query": sql_query,
-                            "csv_generated": bool(csv_path),
-                        },
-                    )
-                    
-                except Exception as e:
-                    logger.error(f"Error in SSE stream: {e}")
-                    yield f"event: error\ndata: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
-            
-            return StreamingResponse(
-                event_stream(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no"  # Disable buffering for nginx
-                }
-            )
-            
+            return await app.state.sse_handler.handle_sse_request(request)
         except Exception as e:
             logger.error(f"Error in SSE endpoint: {e}")
             raise HTTPException(status_code=500, detail=str(e))
@@ -2216,7 +2052,7 @@ def create_app() -> FastAPI:
             sql_query = request_data.get("sql_query")
             
             if not all([user_id, original_question, sql_query]):
-                raise HTTPException(
+                raise HTTPExcetption(
                     status_code=400, 
                     detail="Missing required fields: user_id, original_question, sql_query"
                 )
